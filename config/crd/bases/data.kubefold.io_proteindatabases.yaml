@@ -14,7 +14,26 @@ spec:
     singular: proteindatabase
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.downloadStatus
+      name: Status
+      type: string
+    - jsonPath: .spec.progress
+      name: Progress
+      type: string
+    - jsonPath: .spec.size
+      name: Size
+      type: string
+    - jsonPath: .spec.downloadSpeed
+      name: Download Speed
+      type: string
+    - jsonPath: .spec.volumeName
+      name: Volume
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: ProteinDatabase is the Schema for the proteindatabases API.
@@ -39,13 +58,116 @@ spec:
           spec:
             description: ProteinDatabaseSpec defines the desired state of ProteinDatabase.
             properties:
+              datasets:
+                properties:
+                  bfd-first_non_consensus_sequences:
+                    type: boolean
+                  mgy_clusters_2022_05:
+                    type: boolean
+                  nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq:
+                    type: boolean
+                  pdb_2022_09_28_mmcif_files:
+                    type: boolean
+                  pdb_seqres_2022_09_28:
+                    type: boolean
+                  rfam_14_9_clust_seq_id_90_cov_80_rep_seq:
+                    type: boolean
+                  rnacentral_active_seq_id_90_cov_80_linclust:
+                    type: boolean
+                  uniref90_2022_05:
+                    type: boolean
+                required:
+                - bfd-first_non_consensus_sequences
+                - mgy_clusters_2022_05
+                - nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq
+                - pdb_2022_09_28_mmcif_files
+                - pdb_seqres_2022_09_28
+                - rfam_14_9_clust_seq_id_90_cov_80_rep_seq
+                - rnacentral_active_seq_id_90_cov_80_linclust
+                - uniref90_2022_05
+                type: object
               foo:
                 description: Foo is an example field of ProteinDatabase. Edit proteindatabase_types.go
                   to remove/update
                 type: string
+              volume:
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  selector:
+                    description: |-
+                      A label selector is a label query over a set of resources. The result of matchLabels and
+                      matchExpressions are ANDed. An empty label selector matches all objects. A null
+                      label selector matches no objects.
+                    properties:
+                      matchExpressions:
+                        description: matchExpressions is a list of label selector
+                          requirements. The requirements are ANDed.
+                        items:
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
+                          properties:
+                            key:
+                              description: key is the label key that the selector
+                                applies to.
+                              type: string
+                            operator:
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  storageClassName:
+                    type: string
+                type: object
             type: object
           status:
             description: ProteinDatabaseStatus defines the observed state of ProteinDatabase.
+            properties:
+              downloadSpeed:
+                type: string
+              downloadStatus:
+                type: string
+              progress:
+                type: string
+              size:
+                type: string
+              volumeName:
+                type: string
+            required:
+            - volumeName
             type: object
         type: object
     served: true
