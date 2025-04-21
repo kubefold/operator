@@ -24,6 +24,9 @@ spec:
     - jsonPath: .status.size
       name: Size
       type: string
+    - jsonPath: .status.totalSize
+      name: Total Size
+      type: string
     - jsonPath: .status.downloadSpeed
       name: Download Speed
       type: string
@@ -163,6 +166,8 @@ spec:
               progress:
                 type: string
               size:
+                type: string
+              totalSize:
                 type: string
               volumeName:
                 type: string

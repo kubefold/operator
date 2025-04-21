@@ -179,7 +179,8 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 			progressStr = "0%"
 		}
 
-		sizeStr := humanReadableSize(totalBytes)
+		sizeStr := humanReadableSize(totalSize)
+		totalSizeStr := humanReadableSize(totalBytes)
 
 		downloadSpeedStr := o.calculateDownloadSpeed(resourceKey, totalSize)
 
@@ -195,10 +196,12 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 
 		proteinDBCopy.Status.Progress = progressStr
 		proteinDBCopy.Status.Size = sizeStr
+		proteinDBCopy.Status.TotalSize = totalSizeStr
 		proteinDBCopy.Status.DownloadSpeed = downloadSpeedStr
 
 		if proteinDBCopy.Status.Progress != proteinDB.Status.Progress ||
 			proteinDBCopy.Status.Size != proteinDB.Status.Size ||
+			proteinDBCopy.Status.TotalSize != proteinDB.Status.TotalSize ||
 			proteinDBCopy.Status.DownloadStatus != proteinDB.Status.DownloadStatus ||
 			proteinDBCopy.Status.DownloadSpeed != proteinDB.Status.DownloadSpeed {
 
@@ -216,6 +219,7 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 				"namespace", proteinDB.Namespace,
 				"progress", progressStr,
 				"size", sizeStr,
+				"totalSize", totalSizeStr,
 				"downloadSpeed", downloadSpeedStr)
 		}
 	}

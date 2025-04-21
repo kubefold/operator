@@ -10,7 +10,7 @@ spec:
     bfd-first_non_consensus_sequences: false
     mgy_clusters_2022_05: false
     nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq: false
-    pdb_2022_09_28_mmcif_files: false
+    pdb_2022_09_28_mmcif_files: true
     pdb_seqres_2022_09_28: false
     rfam_14_9_clust_seq_id_90_cov_80_rep_seq: true
     rnacentral_active_seq_id_90_cov_80_linclust: false

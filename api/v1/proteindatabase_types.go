@@ -77,6 +77,7 @@ type ProteinDatabaseStatus struct {
 	VolumeName     string                        `json:"volumeName"`
 	Progress       string                        `json:"progress,omitempty"`
 	Size           string                        `json:"size,omitempty"`
+	TotalSize      string                        `json:"totalSize,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -84,6 +85,7 @@ type ProteinDatabaseStatus struct {
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.downloadStatus`
 // +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`
 // +kubebuilder:printcolumn:name="Size",type=string,JSONPath=`.status.size`
+// +kubebuilder:printcolumn:name="Total Size",type=string,JSONPath=`.status.totalSize`
 // +kubebuilder:printcolumn:name="Download Speed",type=string,JSONPath=`.status.downloadSpeed`
 // +kubebuilder:printcolumn:name="Volume",type=string,JSONPath=`.status.volumeName`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
