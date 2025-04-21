@@ -11,12 +11,10 @@ import (
 	datav1 "github.com/kubefold/operator/api/v1"
 )
 
-
 type FinalizerHandler struct {
 	client client.Client
 	scheme *runtime.Scheme
 }
-
 
 func (f *FinalizerHandler) handleDeletion(ctx context.Context, pd *datav1.ProteinDatabase) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
@@ -36,7 +34,6 @@ func (f *FinalizerHandler) handleDeletion(ctx context.Context, pd *datav1.Protei
 	return ctrl.Result{}, nil
 }
 
-
 func (f *FinalizerHandler) ensureFinalizer(ctx context.Context, pd *datav1.ProteinDatabase) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
@@ -47,7 +44,6 @@ func (f *FinalizerHandler) ensureFinalizer(ctx context.Context, pd *datav1.Prote
 	}
 	return ctrl.Result{Requeue: true}, nil
 }
-
 
 func (f *FinalizerHandler) cleanupResources(ctx context.Context, pd *datav1.ProteinDatabase) error {
 	return nil

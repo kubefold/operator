@@ -15,16 +15,16 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.downloadStatus
+    - jsonPath: .status.downloadStatus
       name: Status
       type: string
-    - jsonPath: .spec.progress
+    - jsonPath: .status.progress
       name: Progress
       type: string
-    - jsonPath: .spec.size
+    - jsonPath: .status.size
       name: Size
       type: string
-    - jsonPath: .spec.downloadSpeed
+    - jsonPath: .status.downloadSpeed
       name: Download Speed
       type: string
     - jsonPath: .status.volumeName

@@ -16,12 +16,10 @@ import (
 	datav1 "github.com/kubefold/operator/api/v1"
 )
 
-
 type VolumeHandler struct {
 	client client.Client
 	scheme *runtime.Scheme
 }
-
 
 func (v *VolumeHandler) ensurePVC(ctx context.Context, pd *datav1.ProteinDatabase) (*corev1.PersistentVolumeClaim, *ctrl.Result, error) {
 	log := logf.FromContext(ctx)
@@ -50,7 +48,6 @@ func (v *VolumeHandler) ensurePVC(ctx context.Context, pd *datav1.ProteinDatabas
 
 	return pvc, nil, nil
 }
-
 
 func (v *VolumeHandler) createPVC(ctx context.Context, pd *datav1.ProteinDatabase) (*corev1.PersistentVolumeClaim, error) {
 	pvcName := pd.Name + PersistentVolumeClaimNameSuffix

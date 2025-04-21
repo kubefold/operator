@@ -61,10 +61,10 @@ type ProteinDatabaseSpec struct {
 type ProteinDatabaseDownloadStatus string
 
 const (
-	ProteinDatabaseDownloadStatusNotStarted ProteinDatabaseDownloadStatus = "NotStarted"
-	ProteinDatabaseDownloadStatusInProgress ProteinDatabaseDownloadStatus = "InProgress"
-	ProteinDatabaseDownloadStatusCompleted  ProteinDatabaseDownloadStatus = "Completed"
-	ProteinDatabaseDownloadStatusFailed     ProteinDatabaseDownloadStatus = "Failed"
+	ProteinDatabaseDownloadStatusNotStarted  ProteinDatabaseDownloadStatus = "NotStarted"
+	ProteinDatabaseDownloadStatusDownloading ProteinDatabaseDownloadStatus = "Downloading"
+	ProteinDatabaseDownloadStatusCompleted   ProteinDatabaseDownloadStatus = "Completed"
+	ProteinDatabaseDownloadStatusFailed      ProteinDatabaseDownloadStatus = "Failed"
 )
 
 // ProteinDatabaseStatus defines the observed state of ProteinDatabase.
@@ -81,10 +81,10 @@ type ProteinDatabaseStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.spec.downloadStatus`
-// +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.spec.progress`
-// +kubebuilder:printcolumn:name="Size",type=string,JSONPath=`.spec.size`
-// +kubebuilder:printcolumn:name="Download Speed",type=string,JSONPath=`.spec.downloadSpeed`
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.downloadStatus`
+// +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`
+// +kubebuilder:printcolumn:name="Size",type=string,JSONPath=`.status.size`
+// +kubebuilder:printcolumn:name="Download Speed",type=string,JSONPath=`.status.downloadSpeed`
 // +kubebuilder:printcolumn:name="Volume",type=string,JSONPath=`.status.volumeName`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
