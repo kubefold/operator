@@ -18,13 +18,24 @@ package controller
 
 import (
 	"context"
-
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	datav1 "github.com/kubefold/operator/api/v1"
+)
+
+const (
+	ProteinDatabaseFinalizer        = "data.kubefold.io/finalizer"
+	PersistentVolumeClaimNameSuffix = "-data"
+	PersistentVolumeClaimSize       = "1Gi"
 )
 
 // ProteinDatabaseReconciler reconciles a ProteinDatabase object
@@ -36,6 +47,7 @@ type ProteinDatabaseReconciler struct {
 // +kubebuilder:rbac:groups=data.kubefold.io,resources=proteindatabases,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=data.kubefold.io,resources=proteindatabases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=data.kubefold.io,resources=proteindatabases/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -47,11 +59,112 @@ type ProteinDatabaseReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.4/pkg/reconcile
 func (r *ProteinDatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	log := logf.FromContext(ctx)
+	log.Info("Reconciling ProteinDatabase", "name", req.Name, "namespace", req.Namespace)
 
-	// TODO(user): your logic here
+	pd := &datav1.ProteinDatabase{}
+	if err := r.Get(ctx, req.NamespacedName, pd); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("ProteinDatabase resource not found, ignoring since object must be deleted")
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "Failed to get ProteinDatabase")
+		return ctrl.Result{}, err
+	}
 
+	if !pd.ObjectMeta.DeletionTimestamp.IsZero() {
+		if controllerutil.ContainsFinalizer(pd, ProteinDatabaseFinalizer) {
+			if err := r.cleanupResources(ctx, pd); err != nil {
+				log.Error(err, "Failed to clean up resources")
+				return ctrl.Result{}, err
+			}
+
+			controllerutil.RemoveFinalizer(pd, ProteinDatabaseFinalizer)
+			if err := r.Update(ctx, pd); err != nil {
+				log.Error(err, "Failed to remove finalizer")
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if !controllerutil.ContainsFinalizer(pd, ProteinDatabaseFinalizer) {
+		controllerutil.AddFinalizer(pd, ProteinDatabaseFinalizer)
+		if err := r.Update(ctx, pd); err != nil {
+			log.Error(err, "Failed to add finalizer")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	pvcName := pd.Name + PersistentVolumeClaimNameSuffix
+	pvc := &corev1.PersistentVolumeClaim{}
+	err := r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: pd.Namespace}, pvc)
+
+	if err != nil && errors.IsNotFound(err) {
+		pvc, err = r.createPersistentVolumeClaim(ctx, pd)
+		if err != nil {
+			log.Error(err, "Failed to create PVC")
+			return ctrl.Result{}, err
+		}
+		log.Info("Created new PVC", "pvcName", pvc.Name)
+	} else if err != nil {
+		log.Error(err, "Failed to get PVC")
+		return ctrl.Result{}, err
+	}
+
+	// Update status if needed
+	// TODO: Add status update logic if necessary
+
+	log.Info("Reconciliation completed successfully")
 	return ctrl.Result{}, nil
+}
+
+func (r *ProteinDatabaseReconciler) createPersistentVolumeClaim(ctx context.Context, pd *datav1.ProteinDatabase) (*corev1.PersistentVolumeClaim, error) {
+	pvcName := pd.Name + PersistentVolumeClaimNameSuffix
+
+	labels := pd.Spec.Volume.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels["app.kubernetes.io/name"] = "proteindatabase"
+	labels["app.kubernetes.io/instance"] = pd.Name
+	labels["app.kubernetes.io/managed-by"] = "kubefold-operator"
+
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvcName,
+			Namespace: pd.Namespace,
+			Labels:    labels,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+			StorageClassName: pd.Spec.Volume.StorageClassName,
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse(PersistentVolumeClaimSize),
+				},
+			},
+		},
+	}
+
+	if pd.Spec.Volume.Selector != nil {
+		pvc.Spec.Selector = pd.Spec.Volume.Selector
+	}
+
+	if err := controllerutil.SetControllerReference(pd, pvc, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	if err := r.Create(ctx, pvc); err != nil {
+		return nil, err
+	}
+
+	return pvc, nil
+}
+
+func (r *ProteinDatabaseReconciler) cleanupResources(ctx context.Context, pd *datav1.ProteinDatabase) error {
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

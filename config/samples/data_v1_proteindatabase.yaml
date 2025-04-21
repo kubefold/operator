@@ -7,7 +7,7 @@ metadata:
   name: proteindatabase-sample
 spec:
   datasets:
-    bfd-first_non_consensus_sequences: true
+    bfd-first_non_consensus_sequences: false
     mgy_clusters_2022_05: true
     nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq: true
     pdb_2022_09_28_mmcif_files: true
@@ -18,4 +18,4 @@ spec:
   volume:
     selector:
       matchLabels:
-        purpose: proteins
+        purpose: proteins2
