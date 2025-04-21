@@ -25,7 +25,7 @@ type JobHandler struct {
 func (j *JobHandler) ensureJobs(ctx context.Context, pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim) error {
 	log := logf.FromContext(ctx)
 
-	for _, dataset := range datasets {
+	for _, dataset := range getDatasets(pd) {
 		if err := j.ensureJob(ctx, pd, pvc, dataset); err != nil {
 			log.Error(err, "Failed to ensure job for dataset", "dataset", dataset)
 			return err
@@ -35,9 +35,9 @@ func (j *JobHandler) ensureJobs(ctx context.Context, pd *datav1.ProteinDatabase,
 	return nil
 }
 
-func (j *JobHandler) ensureJob(ctx context.Context, pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset string) error {
+func (j *JobHandler) ensureJob(ctx context.Context, pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset Dataset) error {
 	log := logf.FromContext(ctx)
-	jobName := strings.ToLower(fmt.Sprintf("%s-%s-downloader", pd.Name, dataset))
+	jobName := strings.ReplaceAll(strings.ToLower(fmt.Sprintf("%s-%s-downloader", pd.Name, dataset.ShortName())), "_", "-")
 
 	existingJob := &batchv1.Job{}
 	err := j.client.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pd.Namespace}, existingJob)
@@ -64,7 +64,7 @@ func (j *JobHandler) ensureJob(ctx context.Context, pd *datav1.ProteinDatabase, 
 	return nil
 }
 
-func (j *JobHandler) createJobSpec(pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset string, jobName string) *batchv1.Job {
+func (j *JobHandler) createJobSpec(pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset Dataset, jobName string) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -73,7 +73,7 @@ func (j *JobHandler) createJobSpec(pd *datav1.ProteinDatabase, pvc *corev1.Persi
 				"app.kubernetes.io/name":       "proteindatabase-downloader",
 				"app.kubernetes.io/instance":   pd.Name,
 				"app.kubernetes.io/managed-by": "kubefold-operator",
-				"dataset":                      dataset,
+				"kubefold.io/dataset":          dataset.ShortName(),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -82,25 +82,30 @@ func (j *JobHandler) createJobSpec(pd *datav1.ProteinDatabase, pvc *corev1.Persi
 					RestartPolicy: corev1.RestartPolicyOnFailure,
 					Containers: []corev1.Container{
 						{
-							Name:  "downloader",
-							Image: DownloaderImage,
+							Name:            "downloader",
+							Image:           DownloaderImage,
+							ImagePullPolicy: DownloaderImagePullPolicy,
 							Env: []corev1.EnvVar{
 								{
 									Name:  "DATASET",
-									Value: dataset,
+									Value: dataset.String(),
+								},
+								{
+									Name:  "DESTINATION",
+									Value: "/public_databases",
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "data",
-									MountPath: "/data",
+									Name:      "databases",
+									MountPath: "/public_databases",
 								},
 							},
 						},
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "data",
+							Name: "databases",
 							VolumeSource: corev1.VolumeSource{
 								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 									ClaimName: pvc.Name,
