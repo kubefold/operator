@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/leader"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	datav1 "github.com/kubefold/operator/api/v1"
@@ -29,7 +28,6 @@ type logObserver struct {
 	client     client.Client
 	kubeClient kubernetes.Interface
 	stopCh     chan struct{}
-	isLeader   bool
 }
 
 type LogEntry struct {
@@ -52,20 +50,8 @@ func NewLogObserver(c client.Client, kubeClient kubernetes.Interface) LogObserve
 }
 
 func (o *logObserver) Start(ctx context.Context) error {
-	log.Info("Starting log observer - waiting for leadership")
-
-	go func() {
-		err := leader.Become(ctx, "log-observer-lock")
-		if err != nil {
-			log.Error(err, "Failed to acquire leadership lock")
-			return
-		}
-
-		log.Info("Acquired leadership - starting log observer")
-		o.isLeader = true
-		o.run(ctx)
-	}()
-
+	log.Info("Starting log observer")
+	go o.run(ctx)
 	return nil
 }
 
@@ -81,11 +67,6 @@ func (o *logObserver) run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			if !o.isLeader {
-				log.V(4).Info("Not the leader, skipping log observation")
-				continue
-			}
-
 			if err := o.updateProteinDatabaseStatus(ctx); err != nil {
 				log.Error(err, "Error updating ProteinDatabase status")
 			}
@@ -100,6 +81,7 @@ func (o *logObserver) run(ctx context.Context) {
 }
 
 func (o *logObserver) updateProteinDatabaseStatus(ctx context.Context) error {
+	// Get all ProteinDatabase resources
 	proteinDBList := &datav1.ProteinDatabaseList{}
 	if err := o.client.List(ctx, proteinDBList); err != nil {
 		return fmt.Errorf("failed to list ProteinDatabase resources: %w", err)
@@ -117,6 +99,7 @@ func (o *logObserver) updateProteinDatabaseStatus(ctx context.Context) error {
 }
 
 func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB *datav1.ProteinDatabase) error {
+	// Find jobs associated with this ProteinDatabase
 	jobList := &v1.JobList{}
 	labelSelector := client.MatchingLabels{
 		"app.kubernetes.io/instance":   proteinDB.Name,
@@ -130,13 +113,16 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 	allCompleted := true
 	datasetCount := 0
 
+	// Process all jobs logs and calculate totals
 	for i := range jobList.Items {
 		job := &jobList.Items[i]
 
+		// Check if job is completed
 		if job.Status.CompletionTime == nil {
 			allCompleted = false
 		}
 
+		// Find pods associated with this job
 		podList := &corev1.PodList{}
 		podLabelSelector := client.MatchingLabels{
 			"job-name": job.Name,
@@ -146,16 +132,18 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 			continue
 		}
 
+		// Process each pod's logs
 		for j := range podList.Items {
 			pod := &podList.Items[j]
 			if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
 				continue
 			}
 
+			// Get logs from the pod
 			req := o.kubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
 				Container: "downloader",
 				Follow:    false,
-				TailLines: int64Ptr(100),
+				TailLines: int64Ptr(100), // Only get the most recent logs
 			})
 
 			podLogs, err := req.Stream(ctx)
@@ -164,6 +152,7 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 				continue
 			}
 
+			// Process log stream
 			jobSize, jobTotal, err := o.processLogStreamForTotals(podLogs)
 			podLogs.Close()
 
@@ -180,9 +169,12 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 		}
 	}
 
+	// Update the status
 	if datasetCount > 0 {
+		// Make a copy to update
 		proteinDBCopy := proteinDB.DeepCopy()
 
+		// Calculate the progress percentage
 		var progressStr string
 		if totalBytes > 0 {
 			progressPercent := float64(totalSize) / float64(totalBytes) * 100
@@ -191,8 +183,10 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 			progressStr = "0%"
 		}
 
+		// Calculate the total size in human-readable format
 		sizeStr := humanReadableSize(totalBytes)
 
+		// Set download status
 		if allCompleted && datasetCount > 0 {
 			proteinDBCopy.Status.DownloadStatus = datav1.ProteinDatabaseDownloadStatusCompleted
 		} else if totalSize > 0 {
@@ -204,6 +198,7 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 		proteinDBCopy.Status.Progress = progressStr
 		proteinDBCopy.Status.Size = sizeStr
 
+		// Only update if there are changes
 		if proteinDBCopy.Status.Progress != proteinDB.Status.Progress ||
 			proteinDBCopy.Status.Size != proteinDB.Status.Size ||
 			proteinDBCopy.Status.DownloadStatus != proteinDB.Status.DownloadStatus {
@@ -231,6 +226,7 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 func (o *logObserver) processLogStreamForTotals(logStream io.ReadCloser) (size int64, total int64, err error) {
 	scanner := bufio.NewScanner(logStream)
 
+	// We'll use the latest values from the logs
 	var latestSize, latestTotal int64
 	foundEntry := false
 
@@ -238,13 +234,14 @@ func (o *logObserver) processLogStreamForTotals(logStream io.ReadCloser) (size i
 		line := scanner.Text()
 		var logEntry LogEntry
 		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			continue
+			continue // Skip lines that can't be parsed
 		}
 
 		if logEntry.Type != "download" {
 			continue
 		}
 
+		// Always use the most recent values
 		latestSize = logEntry.Size
 		latestTotal = logEntry.Total
 		foundEntry = true
