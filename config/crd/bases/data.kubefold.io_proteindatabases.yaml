@@ -27,7 +27,7 @@ spec:
     - jsonPath: .spec.downloadSpeed
       name: Download Speed
       type: string
-    - jsonPath: .spec.volumeName
+    - jsonPath: .status.volumeName
       name: Volume
       type: string
     - jsonPath: .metadata.creationTimestamp

@@ -85,7 +85,7 @@ type ProteinDatabaseStatus struct {
 // +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.spec.progress`
 // +kubebuilder:printcolumn:name="Size",type=string,JSONPath=`.spec.size`
 // +kubebuilder:printcolumn:name="Download Speed",type=string,JSONPath=`.spec.downloadSpeed`
-// +kubebuilder:printcolumn:name="Volume",type=string,JSONPath=`.spec.volumeName`
+// +kubebuilder:printcolumn:name="Volume",type=string,JSONPath=`.status.volumeName`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ProteinDatabase is the Schema for the proteindatabases API.

@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"time"
 
 	datav1 "github.com/kubefold/operator/api/v1"
 )
@@ -113,11 +114,21 @@ func (r *ProteinDatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	// Update status if needed
-	// TODO: Add status update logic if necessary
+	if pvc.Status.Phase == corev1.ClaimBound {
+		if pd.Status.VolumeName != pvc.Spec.VolumeName {
+			log.Info("PVC is bound, updating ProteinDatabase status", "pvcName", pvc.Name, "volumeName", pvc.Spec.VolumeName)
+			if err := r.updateProteinDatabaseStatus(ctx, pd, pvc); err != nil {
+				log.Error(err, "Failed to update ProteinDatabase status")
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		log.Info("PVC is not bound yet", "pvcName", pvc.Name, "phase", pvc.Status.Phase)
+		return ctrl.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
+	}
 
 	log.Info("Reconciliation completed successfully")
-	return ctrl.Result{}, nil
+	return ctrl.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
 }
 
 func (r *ProteinDatabaseReconciler) createPersistentVolumeClaim(ctx context.Context, pd *datav1.ProteinDatabase) (*corev1.PersistentVolumeClaim, error) {
@@ -167,10 +178,21 @@ func (r *ProteinDatabaseReconciler) cleanupResources(ctx context.Context, pd *da
 	return nil
 }
 
+func (r *ProteinDatabaseReconciler) updateProteinDatabaseStatus(ctx context.Context, pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim) error {
+	pdCopy := pd.DeepCopy()
+
+	// Update status fields
+	pdCopy.Status.VolumeName = pvc.Spec.VolumeName
+
+	// Create a patch from the original and updated objects
+	return r.Status().Update(ctx, pdCopy)
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProteinDatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&datav1.ProteinDatabase{}).
+		Owns(&corev1.PersistentVolumeClaim{}).
 		Named("proteindatabase").
 		Complete(r)
 }
