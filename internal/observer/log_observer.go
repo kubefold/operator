@@ -25,9 +25,12 @@ type LogObserver interface {
 }
 
 type logObserver struct {
-	client     client.Client
-	kubeClient kubernetes.Interface
-	stopCh     chan struct{}
+	client            client.Client
+	kubeClient        kubernetes.Interface
+	stopCh            chan struct{}
+	lastSizeMap       map[string]int64
+	lastTimestampMap  map[string]time.Time
+	downloadSpeedsMap map[string]float64
 }
 
 type LogEntry struct {
@@ -43,9 +46,12 @@ type LogEntry struct {
 
 func NewLogObserver(c client.Client, kubeClient kubernetes.Interface) LogObserver {
 	return &logObserver{
-		client:     c,
-		kubeClient: kubeClient,
-		stopCh:     make(chan struct{}),
+		client:            c,
+		kubeClient:        kubeClient,
+		stopCh:            make(chan struct{}),
+		lastSizeMap:       make(map[string]int64),
+		lastTimestampMap:  make(map[string]time.Time),
+		downloadSpeedsMap: make(map[string]float64),
 	}
 }
 
@@ -61,7 +67,7 @@ func (o *logObserver) Stop() {
 }
 
 func (o *logObserver) run(ctx context.Context) {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
@@ -81,7 +87,6 @@ func (o *logObserver) run(ctx context.Context) {
 }
 
 func (o *logObserver) updateProteinDatabaseStatus(ctx context.Context) error {
-	// Get all ProteinDatabase resources
 	proteinDBList := &datav1.ProteinDatabaseList{}
 	if err := o.client.List(ctx, proteinDBList); err != nil {
 		return fmt.Errorf("failed to list ProteinDatabase resources: %w", err)
@@ -99,7 +104,6 @@ func (o *logObserver) updateProteinDatabaseStatus(ctx context.Context) error {
 }
 
 func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB *datav1.ProteinDatabase) error {
-	// Find jobs associated with this ProteinDatabase
 	jobList := &v1.JobList{}
 	labelSelector := client.MatchingLabels{
 		"app.kubernetes.io/instance":   proteinDB.Name,
@@ -112,17 +116,15 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 	var totalSize, totalBytes int64
 	allCompleted := true
 	datasetCount := 0
+	resourceKey := fmt.Sprintf("%s/%s", proteinDB.Namespace, proteinDB.Name)
 
-	// Process all jobs logs and calculate totals
 	for i := range jobList.Items {
 		job := &jobList.Items[i]
 
-		// Check if job is completed
 		if job.Status.CompletionTime == nil {
 			allCompleted = false
 		}
 
-		// Find pods associated with this job
 		podList := &corev1.PodList{}
 		podLabelSelector := client.MatchingLabels{
 			"job-name": job.Name,
@@ -132,18 +134,16 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 			continue
 		}
 
-		// Process each pod's logs
 		for j := range podList.Items {
 			pod := &podList.Items[j]
 			if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodSucceeded {
 				continue
 			}
 
-			// Get logs from the pod
 			req := o.kubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{
 				Container: "downloader",
 				Follow:    false,
-				TailLines: int64Ptr(100), // Only get the most recent logs
+				TailLines: int64Ptr(100),
 			})
 
 			podLogs, err := req.Stream(ctx)
@@ -152,7 +152,6 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 				continue
 			}
 
-			// Process log stream
 			jobSize, jobTotal, err := o.processLogStreamForTotals(podLogs)
 			podLogs.Close()
 
@@ -169,12 +168,9 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 		}
 	}
 
-	// Update the status
 	if datasetCount > 0 {
-		// Make a copy to update
 		proteinDBCopy := proteinDB.DeepCopy()
 
-		// Calculate the progress percentage
 		var progressStr string
 		if totalBytes > 0 {
 			progressPercent := float64(totalSize) / float64(totalBytes) * 100
@@ -183,25 +179,28 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 			progressStr = "0%"
 		}
 
-		// Calculate the total size in human-readable format
 		sizeStr := humanReadableSize(totalBytes)
 
-		// Set download status
+		downloadSpeedStr := o.calculateDownloadSpeed(resourceKey, totalSize)
+
 		if allCompleted && datasetCount > 0 {
 			proteinDBCopy.Status.DownloadStatus = datav1.ProteinDatabaseDownloadStatusCompleted
+			downloadSpeedStr = ""
 		} else if totalSize > 0 {
 			proteinDBCopy.Status.DownloadStatus = datav1.ProteinDatabaseDownloadStatusDownloading
 		} else {
 			proteinDBCopy.Status.DownloadStatus = datav1.ProteinDatabaseDownloadStatusNotStarted
+			downloadSpeedStr = ""
 		}
 
 		proteinDBCopy.Status.Progress = progressStr
 		proteinDBCopy.Status.Size = sizeStr
+		proteinDBCopy.Status.DownloadSpeed = downloadSpeedStr
 
-		// Only update if there are changes
 		if proteinDBCopy.Status.Progress != proteinDB.Status.Progress ||
 			proteinDBCopy.Status.Size != proteinDB.Status.Size ||
-			proteinDBCopy.Status.DownloadStatus != proteinDB.Status.DownloadStatus {
+			proteinDBCopy.Status.DownloadStatus != proteinDB.Status.DownloadStatus ||
+			proteinDBCopy.Status.DownloadSpeed != proteinDB.Status.DownloadSpeed {
 
 			if err := o.client.Status().Update(ctx, proteinDBCopy); err != nil {
 				if errors.IsConflict(err) {
@@ -216,17 +215,82 @@ func (o *logObserver) updateSingleProteinDBStatus(ctx context.Context, proteinDB
 				"name", proteinDB.Name,
 				"namespace", proteinDB.Namespace,
 				"progress", progressStr,
-				"size", sizeStr)
+				"size", sizeStr,
+				"downloadSpeed", downloadSpeedStr)
 		}
 	}
 
 	return nil
 }
 
+func (o *logObserver) calculateDownloadSpeed(resourceKey string, currentSize int64) string {
+	now := time.Now()
+	lastSize, sizeExists := o.lastSizeMap[resourceKey]
+	lastTimestamp, timeExists := o.lastTimestampMap[resourceKey]
+
+	defer func() {
+		o.lastSizeMap[resourceKey] = currentSize
+		o.lastTimestampMap[resourceKey] = now
+	}()
+
+	if !sizeExists || !timeExists || lastSize >= currentSize {
+		if !sizeExists || lastSize != currentSize {
+			o.downloadSpeedsMap[resourceKey] = 0
+			return "0 B/s"
+		}
+		return formatSpeed(o.downloadSpeedsMap[resourceKey])
+	}
+
+	elapsed := now.Sub(lastTimestamp).Seconds()
+	if elapsed <= 0 {
+		return formatSpeed(o.downloadSpeedsMap[resourceKey])
+	}
+
+	sizeChange := currentSize - lastSize
+	speedBytesPerSec := float64(sizeChange) / elapsed
+
+	if prevSpeed, ok := o.downloadSpeedsMap[resourceKey]; ok && prevSpeed > 0 {
+		speedBytesPerSec = 0.7*prevSpeed + 0.3*speedBytesPerSec
+	}
+
+	o.downloadSpeedsMap[resourceKey] = speedBytesPerSec
+
+	return formatSpeed(speedBytesPerSec)
+}
+
+func formatSpeed(bytesPerSec float64) string {
+	const (
+		_        = iota
+		KB int64 = 1 << (10 * iota)
+		MB
+		GB
+		TB
+	)
+
+	unit := "B/s"
+	value := bytesPerSec
+
+	switch {
+	case bytesPerSec >= float64(TB):
+		unit = "TB/s"
+		value = bytesPerSec / float64(TB)
+	case bytesPerSec >= float64(GB):
+		unit = "GB/s"
+		value = bytesPerSec / float64(GB)
+	case bytesPerSec >= float64(MB):
+		unit = "MB/s"
+		value = bytesPerSec / float64(MB)
+	case bytesPerSec >= float64(KB):
+		unit = "KB/s"
+		value = bytesPerSec / float64(KB)
+	}
+
+	return fmt.Sprintf("%.2f %s", value, unit)
+}
+
 func (o *logObserver) processLogStreamForTotals(logStream io.ReadCloser) (size int64, total int64, err error) {
 	scanner := bufio.NewScanner(logStream)
 
-	// We'll use the latest values from the logs
 	var latestSize, latestTotal int64
 	foundEntry := false
 
@@ -234,14 +298,13 @@ func (o *logObserver) processLogStreamForTotals(logStream io.ReadCloser) (size i
 		line := scanner.Text()
 		var logEntry LogEntry
 		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			continue // Skip lines that can't be parsed
+			continue
 		}
 
 		if logEntry.Type != "download" {
 			continue
 		}
 
-		// Always use the most recent values
 		latestSize = logEntry.Size
 		latestTotal = logEntry.Total
 		foundEntry = true
