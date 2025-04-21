@@ -1,0 +1,9 @@
+apiVersion: data.kubefold.io/v1
+kind: ProteinDatabase
+metadata:
+  labels:
+    app.kubernetes.io/name: kubefold
+    app.kubernetes.io/managed-by: kustomize
+  name: proteindatabase-sample
+spec:
+  # TODO(user): Add fields here
