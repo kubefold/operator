@@ -21,7 +21,7 @@ func (d Dataset) String() string {
 
 func (d Dataset) ShortName() string {
 	switch d {
-	case DatasetMHYClusters:
+	case DatasetMGYClusters:
 		return "mhy-clusters"
 	case DatasetBFD:
 		return "bfd"
@@ -45,7 +45,7 @@ func (d Dataset) ShortName() string {
 }
 
 const (
-	DatasetMHYClusters Dataset = "mgy_clusters_2022_05.fa"
+	DatasetMGYClusters Dataset = "mgy_clusters_2022_05.fa"
 	DatasetBFD         Dataset = "bfd-first_non_consensus_sequences.fasta"
 	DatasetUniRef90    Dataset = "uniref90_2022_05.fa"
 	DatasetUniProt     Dataset = "uniprot_all_2021_04.fa"

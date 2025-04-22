@@ -5,7 +5,7 @@ import datav1 "github.com/kubefold/operator/api/v1"
 func getDatasets(pd *datav1.ProteinDatabase) []Dataset {
 	o := make([]Dataset, 0)
 	if pd.Spec.Datasets.MHYClusters {
-		o = append(o, DatasetMHYClusters)
+		o = append(o, DatasetMGYClusters)
 	}
 	if pd.Spec.Datasets.BFD {
 		o = append(o, DatasetBFD)
