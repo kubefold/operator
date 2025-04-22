@@ -13,6 +13,9 @@ func getDatasets(pd *datav1.ProteinDatabase) []Dataset {
 	if pd.Spec.Datasets.UniRef90 {
 		o = append(o, DatasetUniRef90)
 	}
+	if pd.Spec.Datasets.UniProt {
+		o = append(o, DatasetUniProt)
+	}
 	if pd.Spec.Datasets.PDB {
 		o = append(o, DatasetPDB)
 	}

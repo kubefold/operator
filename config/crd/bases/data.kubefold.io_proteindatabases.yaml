@@ -77,6 +77,8 @@ spec:
                     type: boolean
                   rnacentral_active_seq_id_90_cov_80_linclust:
                     type: boolean
+                  uniprot_all_2021_04:
+                    type: boolean
                   uniref90_2022_05:
                     type: boolean
                 required:
@@ -87,6 +89,7 @@ spec:
                 - pdb_seqres_2022_09_28
                 - rfam_14_9_clust_seq_id_90_cov_80_rep_seq
                 - rnacentral_active_seq_id_90_cov_80_linclust
+                - uniprot_all_2021_04
                 - uniref90_2022_05
                 type: object
               foo:

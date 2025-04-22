@@ -27,6 +27,8 @@ func (d Dataset) ShortName() string {
 		return "bfd"
 	case DatasetUniRef90:
 		return "uniref90"
+	case DatasetUniProt:
+		return "uniprot"
 	case DatasetPDB:
 		return "pdb"
 	case DatasetPDBSeqReq:
@@ -46,6 +48,7 @@ const (
 	DatasetMHYClusters Dataset = "mgy_clusters_2022_05.fa"
 	DatasetBFD         Dataset = "bfd-first_non_consensus_sequences.fasta"
 	DatasetUniRef90    Dataset = "uniref90_2022_05.fa"
+	DatasetUniProt     Dataset = "uniprot_all_2021_04.fa"
 	DatasetPDB         Dataset = "pdb_2022_09_28_mmcif_files.tar"
 	DatasetPDBSeqReq   Dataset = "pdb_seqres_2022_09_28.fasta"
 	DatasetRNACentral  Dataset = "rnacentral_active_seq_id_90_cov_80_linclust.fasta"

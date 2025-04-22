@@ -15,6 +15,7 @@ spec:
     rfam_14_9_clust_seq_id_90_cov_80_rep_seq: true
     rnacentral_active_seq_id_90_cov_80_linclust: false
     uniref90_2022_05: false
+    uniprot_all_2021_04: true
   volume:
     selector:
       matchLabels:

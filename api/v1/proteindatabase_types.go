@@ -39,6 +39,7 @@ type ProteinDatabaseDatasets struct {
 	MHYClusters bool `json:"mgy_clusters_2022_05"`
 	BFD         bool `json:"bfd-first_non_consensus_sequences"`
 	UniRef90    bool `json:"uniref90_2022_05"`
+	UniProt     bool `json:"uniprot_all_2021_04"`
 	PDB         bool `json:"pdb_2022_09_28_mmcif_files"`
 	PDBSeqReq   bool `json:"pdb_seqres_2022_09_28"`
 	RNACentral  bool `json:"rnacentral_active_seq_id_90_cov_80_linclust"`
