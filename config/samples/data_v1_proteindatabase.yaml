@@ -7,16 +7,14 @@ metadata:
   name: proteindatabase-sample
 spec:
   datasets:
-    bfd-first_non_consensus_sequences: false
-    mgy_clusters_2022_05: false
-    nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq: false
-    pdb_2022_09_28_mmcif_files: false
+    bfd-first_non_consensus_sequences: true
+    mgy_clusters_2022_05: true
+    nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq: true
+    pdb_2022_09_28_mmcif_files: true
     pdb_seqres_2022_09_28: true
     rfam_14_9_clust_seq_id_90_cov_80_rep_seq: true
-    rnacentral_active_seq_id_90_cov_80_linclust: false
-    uniref90_2022_05: false
-    uniprot_all_2021_04: false
+    rnacentral_active_seq_id_90_cov_80_linclust: true
+    uniref90_2022_05: true
+    uniprot_all_2021_04: true
   volume:
-    selector:
-      matchLabels:
-        purpose: proteins
+    storageClassName: fsx-sc

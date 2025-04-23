@@ -1,0 +1,29 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: alphafold-cluster
+  region: eu-central-1
+nodeGroups:
+  - name: ng-primary
+    instanceType: t3.medium
+    desiredCapacity: 2
+    iam:
+      withAddonPolicies:
+        ebs: true
+        fsx: true
+        efs: true
+iam:
+  withOIDC: true
+  serviceAccounts:
+    - metadata:
+        name: fsx-csi-controller-sa
+        namespace: kube-system
+        labels: { aws-usage: "application" }
+      attachPolicyARNs:
+        - "arn:aws:iam::aws:policy/AmazonFSxFullAccess"
+
+addons:
+  - name: vpc-cni
+  - name: coredns
+  - name: kube-proxy
+  - name: eks-pod-identity-agent

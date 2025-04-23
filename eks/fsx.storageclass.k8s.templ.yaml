@@ -1,0 +1,13 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: fsx-sc
+provisioner: fsx.csi.aws.com
+parameters:
+  subnetId: {SUBNET_ID}
+  securityGroupIds: {SECURITY_GROUP_ID}
+  deploymentType: PERSISTENT_1
+  perUnitStorageThroughput: "200"
+  dataCompressionType: "NONE"
+mountOptions:
+  - flock

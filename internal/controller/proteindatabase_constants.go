@@ -8,9 +8,10 @@ const (
 	ProteinDatabaseFinalizer        = "data.kubefold.io/finalizer"
 	PersistentVolumeClaimNameSuffix = "-data"
 	PersistentVolumeClaimSize       = "1Gi"
-	DownloaderImage                 = "downloader"
-	DownloaderImagePullPolicy       = "Never"
-	ReconcileInterval               = 10 * time.Second
+	DownloaderImage                 = "ghcr.io/kubefold/downloader:latest"
+	//DownloaderImagePullPolicy       = "Never"
+	DownloaderImagePullPolicy = "Always"
+	ReconcileInterval         = 10 * time.Second
 )
 
 type Dataset string
