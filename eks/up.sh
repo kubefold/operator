@@ -1,5 +1,6 @@
 #!/bin/bash
 
+export AWS_PAGER=""
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 eksctl create cluster -f cluster.yaml
 aws eks update-kubeconfig --name alphafold-cluster --region eu-central-1
@@ -10,7 +11,6 @@ SUBNET_ID=$(aws eks describe-cluster --name alphafold-cluster --query "cluster.r
 SECURITY_GROUP_ID=$(aws eks describe-cluster --name alphafold-cluster --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --output text)
 
 LUSTRE_SG_ID=$(aws ec2 create-security-group --group-name LustreSG --description "Security group for Lustre" --vpc-id $(aws eks describe-cluster --name alphafold-cluster --query "cluster.resourcesVpcConfig.vpcId" --output text) --query GroupId --output text)
-AWS_PAGER=""
 aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 988 --cidr $(aws ec2 describe-subnets --subnet-ids $SUBNET_ID --query "Subnets[0].CidrBlock" --output text)
 aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 2049 --cidr $(aws ec2 describe-subnets --subnet-ids $SUBNET_ID --query "Subnets[0].CidrBlock" --output text)
 aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 80 --cidr $(aws ec2 describe-subnets --subnet-ids $SUBNET_ID --query "Subnets[0].CidrBlock" --output text)
@@ -20,6 +20,10 @@ aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp
 aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 2049 --source-group $LUSTRE_SG_ID
 aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 988 --source-group $LUSTRE_SG_ID
 aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 80 --source-group $LUSTRE_SG_ID
+aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 1018-1023 --cidr $(aws ec2 describe-subnets --subnet-ids $SUBNET_ID --query "Subnets[0].CidrBlock" --output text)
+aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 1018-1023 --source-group $SECURITY_GROUP_ID
+aws ec2 authorize-security-group-ingress --group-id $LUSTRE_SG_ID --protocol tcp --port 1018-1023 --source-group $LUSTRE_SG_ID
+
 aws ec2 create-tags --resources $LUSTRE_SG_ID --tags Key=Name,Value=LustreSG
 aws ec2 create-tags --resources $LUSTRE_SG_ID --tags Key=Purpose,Value=LustreSG
 aws ec2 create-tags --resources $LUSTRE_SG_ID --tags Key=Owner,Value=alphafold
