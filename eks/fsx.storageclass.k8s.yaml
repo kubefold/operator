@@ -9,5 +9,4 @@ parameters:
   deploymentType: PERSISTENT_1
   perUnitStorageThroughput: "200"
   dataCompressionType: "NONE"
-mountOptions:
-  - flock
+  fileSystemTypeVersion: "2.15"

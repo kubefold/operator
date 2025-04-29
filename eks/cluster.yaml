@@ -8,6 +8,8 @@ managedNodeGroups:
   - name: ng-primary
     instanceType: t3.medium
     desiredCapacity: 2
+    ssh:
+      allow: true
     subnets:
       - "subnet-038b10f6f4ac5aacd"
     iam:
