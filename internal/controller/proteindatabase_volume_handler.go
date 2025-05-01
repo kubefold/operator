@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	downloaderTypes "github.com/kubefold/downloader/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -61,6 +63,37 @@ func (v *VolumeHandler) createPVC(ctx context.Context, pd *datav1.ProteinDatabas
 	labels["app.kubernetes.io/instance"] = pd.Name
 	labels["app.kubernetes.io/managed-by"] = "kubefold-operator"
 
+	var requestedSize int64
+	if pd.Spec.Datasets.MGYClusters {
+		requestedSize += downloaderTypes.DatasetMGYClusters.Size()
+	}
+	if pd.Spec.Datasets.BFD {
+		requestedSize += downloaderTypes.DatasetBFD.Size()
+	}
+	if pd.Spec.Datasets.UniRef90 {
+		requestedSize += downloaderTypes.DatasetUniRef90.Size()
+	}
+	if pd.Spec.Datasets.UniProt {
+		requestedSize += downloaderTypes.DatasetUniProt.Size()
+	}
+	if pd.Spec.Datasets.PDB {
+		requestedSize += downloaderTypes.DatasetPDB.Size()
+	}
+	if pd.Spec.Datasets.PDBSeqReq {
+		requestedSize += downloaderTypes.DatasetPDBSeqReq.Size()
+	}
+	if pd.Spec.Datasets.RNACentral {
+		requestedSize += downloaderTypes.DatasetRNACentral.Size()
+	}
+	if pd.Spec.Datasets.NT {
+		requestedSize += downloaderTypes.DatasetNT.Size()
+	}
+	if pd.Spec.Datasets.RFam {
+		requestedSize += downloaderTypes.DatasetRFam.Size()
+	}
+	requestedSizeGigabytes := requestedSize / 1024 / 1024 / 1024
+	requestedSizeGigabytes += 2
+
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
@@ -72,7 +105,7 @@ func (v *VolumeHandler) createPVC(ctx context.Context, pd *datav1.ProteinDatabas
 			StorageClassName: pd.Spec.Volume.StorageClassName,
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse(PersistentVolumeClaimSize),
+					corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", requestedSizeGigabytes)),
 				},
 			},
 		},
