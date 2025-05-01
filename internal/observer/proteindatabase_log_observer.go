@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/kubefold/operator/internal/util"
 	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
 	downloaderTypes "github.com/kubefold/downloader/pkg/types"
@@ -180,12 +181,18 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 				Size:           logEntry.Size,
 				TotalSize:      logEntry.Dataset().Size(),
 				Progress:       util.FormatPercentage(logEntry.Size, logEntry.Dataset().Size()),
-				LastUpdate:     util.GetNow(),
+				LastUpdate:     &metav1.Time{Time: logEntry.Time},
 			}
 
 			switch logEntry.Dataset() {
 			case downloaderTypes.DatasetRFam:
+				if proteinDatabaseStatus.Datasets.RFam.LastUpdate != nil {
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(proteinDatabaseStatus.Datasets.RFam.Size, progress.Size, proteinDatabaseStatus.Datasets.RFam.LastUpdate.Time, progress.LastUpdate.Time))
+				}
 				proteinDatabaseStatus.Datasets.RFam = progress
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					proteinDatabaseStatus.DownloadSpeed = ""
+				}
 				break
 			case downloaderTypes.DatasetBFD:
 				break

@@ -11,8 +11,8 @@ spec:
     mgyclusters: false
     nt: false
     pdb: false
-    pdbseqreq: false
+    pdbseqreq: true
     rfam: true
-    rnacentral: false
+    rnacentral: true
     uniref90: false
     uniprot: false
