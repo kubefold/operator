@@ -56,6 +56,7 @@ func (v *VolumeHandler) createPVC(ctx context.Context, pd *datav1.ProteinDatabas
 	if labels == nil {
 		labels = make(map[string]string)
 	}
+	labels["data.kubefold.io/database"] = pd.Name
 	labels["app.kubernetes.io/name"] = "proteindatabase"
 	labels["app.kubernetes.io/instance"] = pd.Name
 	labels["app.kubernetes.io/managed-by"] = "kubefold-operator"

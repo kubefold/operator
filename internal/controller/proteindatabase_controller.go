@@ -24,12 +24,10 @@ type ProteinDatabaseReconciler struct {
 
 func (r *ProteinDatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	log.Info("Reconciling ProteinDatabase", "name", req.Name, "namespace", req.Namespace)
 
 	pd := &datav1.ProteinDatabase{}
 	if err := r.Get(ctx, req.NamespacedName, pd); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("ProteinDatabase resource not found, ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Failed to get ProteinDatabase")

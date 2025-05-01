@@ -7,7 +7,7 @@ import (
 
 func getDatasets(pd *datav1.ProteinDatabase) []types.Dataset {
 	o := make([]types.Dataset, 0)
-	if pd.Spec.Datasets.MHYClusters {
+	if pd.Spec.Datasets.MGYClusters {
 		o = append(o, types.DatasetMGYClusters)
 	}
 	if pd.Spec.Datasets.BFD {

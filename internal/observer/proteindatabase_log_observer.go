@@ -19,7 +19,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("log_observer")
+var log = logf.Log.WithName("proteindatabase_log_observer")
 
 type LogObserver interface {
 	Start(ctx context.Context) error
@@ -184,8 +184,8 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			}
 
 			switch logEntry.Dataset() {
-			case downloaderTypes.DatasetMGYClusters:
-				proteinDatabaseStatus.Datasets.MGYClusters = progress
+			case downloaderTypes.DatasetRFam:
+				proteinDatabaseStatus.Datasets.RFam = progress
 				break
 			case downloaderTypes.DatasetBFD:
 				break
