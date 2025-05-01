@@ -187,12 +187,16 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			switch logEntry.Dataset() {
 			case downloaderTypes.DatasetRFam:
 				if proteinDatabaseStatus.Datasets.RFam.LastUpdate != nil {
-					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(proteinDatabaseStatus.Datasets.RFam.Size, progress.Size, proteinDatabaseStatus.Datasets.RFam.LastUpdate.Time, progress.LastUpdate.Time))
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.RFam.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.RFam.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
 				}
 				proteinDatabaseStatus.Datasets.RFam = progress
-				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
-					proteinDatabaseStatus.DownloadSpeed = ""
-				}
 				break
 			case downloaderTypes.DatasetBFD:
 				break
@@ -204,11 +208,18 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 	return nil
 }
 
+//func (o *logObserver) aggregateDownloadMetrics(proteinDatabaseStatus *datav1.ProteinDatabaseStatus) {
+//	var size int64
+//	var totalSize int64
+//	var downloadSpeed string
+//}
+
 func (o *logObserver) updateStatus(ctx context.Context, pd *datav1.ProteinDatabase, proteinDatabaseStatus *datav1.ProteinDatabaseStatus) error {
 	proteinDatabase := &datav1.ProteinDatabase{}
 	if err := o.client.Get(ctx, types.NamespacedName{Name: pd.Name, Namespace: pd.Namespace}, proteinDatabase); err != nil {
 		return fmt.Errorf("failed to get latest ProteinDatabase: %w", err)
 	}
+
 	proteinDatabase.Status = *proteinDatabaseStatus
 	proteinDatabase.Status.LastUpdate = util.GetNow()
 

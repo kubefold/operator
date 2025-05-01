@@ -49,6 +49,8 @@ type ProteinDatabaseDatasetDownloadProgress struct {
 	Size           int64                         `json:"size,omitempty"`
 	TotalSize      int64                         `json:"totalSize,omitempty"`
 	LastUpdate     *metav1.Time                  `json:"lastUpdate,omitempty"`
+	Delta          int64                         `json:"delta,omitempty"`
+	DeltaDuration  *metav1.Duration              `json:"deltaDuration,omitempty"`
 }
 
 type ProteinDatabaseDatasetDownloadStatus struct {

@@ -2,12 +2,11 @@ package util
 
 import "time"
 
-func CalculateDownloadSpeed(previousSize, currentSize int64, previousTime, currentTime time.Time) int64 {
-	deltaBytes := currentSize - previousSize
-	deltaSeconds := currentTime.Sub(previousTime).Seconds()
+func CalculateDownloadSpeed(delta int64, duration time.Duration) int64 {
+	deltaSeconds := duration.Seconds()
 	if deltaSeconds <= 0 {
 		return 0
 	}
-	speedBps := float64(deltaBytes) / deltaSeconds
+	speedBps := float64(delta) / deltaSeconds
 	return int64(speedBps)
 }

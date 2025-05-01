@@ -159,6 +159,11 @@ spec:
                 properties:
                   bfd:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -177,6 +182,11 @@ spec:
                     type: object
                   mgyclusters:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -195,6 +205,11 @@ spec:
                     type: object
                   nt:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -213,6 +228,11 @@ spec:
                     type: object
                   pdb:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -231,6 +251,11 @@ spec:
                     type: object
                   pdbseqreq:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -249,6 +274,11 @@ spec:
                     type: object
                   rfam:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -267,6 +297,11 @@ spec:
                     type: object
                   rnacentral:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -285,6 +320,11 @@ spec:
                     type: object
                   uniprot:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
@@ -303,6 +343,11 @@ spec:
                     type: object
                   uniref90:
                     properties:
+                      delta:
+                        format: int64
+                        type: integer
+                      deltaDuration:
+                        type: string
                       downloadSpeed:
                         type: string
                       downloadStatus:
