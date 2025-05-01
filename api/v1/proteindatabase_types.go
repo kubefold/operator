@@ -17,15 +17,15 @@ type ProteinDatabaseVolume struct {
 }
 
 type ProteinDatabaseDatasetSelection struct {
-	MHYClusters bool `json:"mgy_clusters_2022_05"`
-	BFD         bool `json:"bfd-first_non_consensus_sequences"`
-	UniRef90    bool `json:"uniref90_2022_05"`
-	UniProt     bool `json:"uniprot_all_2021_04"`
-	PDB         bool `json:"pdb_2022_09_28_mmcif_files"`
-	PDBSeqReq   bool `json:"pdb_seqres_2022_09_28"`
-	RNACentral  bool `json:"rnacentral_active_seq_id_90_cov_80_linclust"`
-	NT          bool `json:"nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq"`
-	RFam        bool `json:"rfam_14_9_clust_seq_id_90_cov_80_rep_seq"`
+	MGYClusters bool `json:"mgyclusters"`
+	BFD         bool `json:"bfd"`
+	UniRef90    bool `json:"uniref90"`
+	UniProt     bool `json:"uniprot"`
+	PDB         bool `json:"pdb"`
+	PDBSeqReq   bool `json:"pdbseqreq"`
+	RNACentral  bool `json:"rnacentral"`
+	NT          bool `json:"nt"`
+	RFam        bool `json:"rfam"`
 }
 
 type ProteinDatabaseSpec struct {
@@ -46,29 +46,32 @@ type ProteinDatabaseDatasetDownloadProgress struct {
 	DownloadStatus ProteinDatabaseDownloadStatus `json:"downloadStatus,omitempty"`
 	DownloadSpeed  string                        `json:"downloadSpeed,omitempty"`
 	Progress       string                        `json:"progress,omitempty"`
-	Size           string                        `json:"size,omitempty"`
-	TotalSize      string                        `json:"totalSize,omitempty"`
-	LastUpdate     metav1.Time                   `json:"lastUpdate"`
+	Size           int64                         `json:"size,omitempty"`
+	TotalSize      int64                         `json:"totalSize,omitempty"`
+	LastUpdate     *metav1.Time                  `json:"lastUpdate,omitempty"`
 }
 
 type ProteinDatabaseDatasetDownloadStatus struct {
-	MHYClusters ProteinDatabaseDatasetDownloadProgress `json:"mgy_clusters_2022_05,omitempty"`
-	BFD         ProteinDatabaseDatasetDownloadProgress `json:"bfd-first_non_consensus_sequences,omitempty"`
-	UniRef90    ProteinDatabaseDatasetDownloadProgress `json:"uniref90_2022_05,omitempty"`
-	UniProt     ProteinDatabaseDatasetDownloadProgress `json:"uniprot_all_2021_04,omitempty"`
-	PDB         ProteinDatabaseDatasetDownloadProgress `json:"pdb_2022_09_28_mmcif_files,omitempty"`
-	PDBSeqReq   ProteinDatabaseDatasetDownloadProgress `json:"pdb_seqres_2022_09_28,omitempty"`
-	RNACentral  ProteinDatabaseDatasetDownloadProgress `json:"rnacentral_active_seq_id_90_cov_80_linclust,omitempty"`
+	MGYClusters ProteinDatabaseDatasetDownloadProgress `json:"mgyclusters,omitempty"`
+	BFD         ProteinDatabaseDatasetDownloadProgress `json:"bfd,omitempty"`
+	UniRef90    ProteinDatabaseDatasetDownloadProgress `json:"uniref90,omitempty"`
+	UniProt     ProteinDatabaseDatasetDownloadProgress `json:"uniprot,omitempty"`
+	PDB         ProteinDatabaseDatasetDownloadProgress `json:"pdb,omitempty"`
+	PDBSeqReq   ProteinDatabaseDatasetDownloadProgress `json:"pdbseqreq,omitempty"`
+	RNACentral  ProteinDatabaseDatasetDownloadProgress `json:"rnacentral,omitempty"`
+	NT          ProteinDatabaseDatasetDownloadProgress `json:"nt,omitempty"`
+	RFam        ProteinDatabaseDatasetDownloadProgress `json:"rfam,omitempty"`
 }
 
 type ProteinDatabaseStatus struct {
-	DownloadStatus ProteinDatabaseDownloadStatus `json:"downloadStatus,omitempty"`
-	DownloadSpeed  string                        `json:"downloadSpeed,omitempty"`
-	VolumeName     string                        `json:"volumeName"`
-	Progress       string                        `json:"progress,omitempty"`
-	Size           string                        `json:"size,omitempty"`
-	TotalSize      string                        `json:"totalSize,omitempty"`
-	LastUpdate     metav1.Time                   `json:"lastUpdate,omitempty"`
+	DownloadStatus ProteinDatabaseDownloadStatus        `json:"downloadStatus,omitempty"`
+	DownloadSpeed  string                               `json:"downloadSpeed,omitempty"`
+	VolumeName     string                               `json:"volumeName"`
+	Progress       string                               `json:"progress,omitempty"`
+	Size           string                               `json:"size,omitempty"`
+	TotalSize      string                               `json:"totalSize,omitempty"`
+	LastUpdate     *metav1.Time                         `json:"lastUpdate,omitempty"`
+	Datasets       ProteinDatabaseDatasetDownloadStatus `json:"datasets,omitempty"`
 }
 
 // +kubebuilder:object:root=true

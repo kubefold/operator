@@ -39,7 +39,6 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: ProteinDatabase is the Schema for the proteindatabases API.
         properties:
           apiVersion:
             description: |-
@@ -59,43 +58,38 @@ spec:
           metadata:
             type: object
           spec:
-            description: ProteinDatabaseSpec defines the desired state of ProteinDatabase.
             properties:
               datasets:
                 properties:
-                  bfd-first_non_consensus_sequences:
+                  bfd:
                     type: boolean
-                  mgy_clusters_2022_05:
+                  mgyclusters:
                     type: boolean
-                  nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq:
+                  nt:
                     type: boolean
-                  pdb_2022_09_28_mmcif_files:
+                  pdb:
                     type: boolean
-                  pdb_seqres_2022_09_28:
+                  pdbseqreq:
                     type: boolean
-                  rfam_14_9_clust_seq_id_90_cov_80_rep_seq:
+                  rfam:
                     type: boolean
-                  rnacentral_active_seq_id_90_cov_80_linclust:
+                  rnacentral:
                     type: boolean
-                  uniprot_all_2021_04:
+                  uniprot:
                     type: boolean
-                  uniref90_2022_05:
+                  uniref90:
                     type: boolean
                 required:
-                - bfd-first_non_consensus_sequences
-                - mgy_clusters_2022_05
-                - nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq
-                - pdb_2022_09_28_mmcif_files
-                - pdb_seqres_2022_09_28
-                - rfam_14_9_clust_seq_id_90_cov_80_rep_seq
-                - rnacentral_active_seq_id_90_cov_80_linclust
-                - uniprot_all_2021_04
-                - uniref90_2022_05
+                - bfd
+                - mgyclusters
+                - nt
+                - pdb
+                - pdbseqreq
+                - rfam
+                - rnacentral
+                - uniprot
+                - uniref90
                 type: object
-              foo:
-                description: Foo is an example field of ProteinDatabase. Edit proteindatabase_types.go
-                  to remove/update
-                type: string
               volume:
                 properties:
                   annotations:
@@ -160,11 +154,178 @@ spec:
                 type: object
             type: object
           status:
-            description: ProteinDatabaseStatus defines the observed state of ProteinDatabase.
             properties:
+              datasets:
+                properties:
+                  bfd:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  mgyclusters:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  nt:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  pdb:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  pdbseqreq:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  rfam:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  rnacentral:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  uniprot:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                  uniref90:
+                    properties:
+                      downloadSpeed:
+                        type: string
+                      downloadStatus:
+                        type: string
+                      lastUpdate:
+                        format: date-time
+                        type: string
+                      progress:
+                        type: string
+                      size:
+                        format: int64
+                        type: integer
+                      totalSize:
+                        format: int64
+                        type: integer
+                    type: object
+                type: object
               downloadSpeed:
                 type: string
               downloadStatus:
+                type: string
+              lastUpdate:
+                format: date-time
                 type: string
               progress:
                 type: string

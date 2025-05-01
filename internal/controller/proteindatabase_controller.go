@@ -75,7 +75,8 @@ func (r *ProteinDatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	log.Info("Reconciliation completed successfully")
-	return ctrl.Result{Requeue: true, RequeueAfter: ReconcileInterval}, nil
+	//return ctrl.Result{Requeue: true, RequeueAfter: ReconcileInterval}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *ProteinDatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {

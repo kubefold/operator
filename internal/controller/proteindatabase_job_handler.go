@@ -66,19 +66,25 @@ func (j *JobHandler) ensureJob(ctx context.Context, pd *datav1.ProteinDatabase, 
 }
 
 func (j *JobHandler) createJobSpec(pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset downloaderTypes.Dataset, jobName string) *batchv1.Job {
+	labels := map[string]string{
+		"data.kubefold.io/dataset":     dataset.ShortName(),
+		"data.kubefold.io/database":    pd.Name,
+		"app.kubernetes.io/name":       "proteindatabase-downloader",
+		"app.kubernetes.io/instance":   pd.Name,
+		"app.kubernetes.io/managed-by": "kubefold-operator",
+	}
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
 			Namespace: pd.Namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/name":       "proteindatabase-downloader",
-				"app.kubernetes.io/instance":   pd.Name,
-				"app.kubernetes.io/managed-by": "kubefold-operator",
-				"kubefold.io/dataset":          dataset.ShortName(),
-			},
+			Labels:    labels,
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyOnFailure,
 					Containers: []corev1.Container{

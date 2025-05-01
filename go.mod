@@ -5,7 +5,7 @@ go 1.24.2
 godebug default=go1.23
 
 require (
-	github.com/kubefold/downloader v0.0.3
+	github.com/kubefold/downloader v0.0.5
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	k8s.io/api v0.32.1
