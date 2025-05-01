@@ -208,17 +208,56 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 	return nil
 }
 
-//func (o *logObserver) aggregateDownloadMetrics(proteinDatabaseStatus *datav1.ProteinDatabaseStatus) {
-//	var size int64
-//	var totalSize int64
-//	var downloadSpeed string
-//}
+func (o *logObserver) aggregateDownloadMetrics(proteinDatabaseStatus *datav1.ProteinDatabaseStatus) {
+	var size int64
+	var totalSize int64
+	var delta int64
+	var deltaDuration time.Duration
+
+	progresses := []datav1.ProteinDatabaseDatasetDownloadProgress{
+		proteinDatabaseStatus.Datasets.RFam,
+		proteinDatabaseStatus.Datasets.BFD,
+		proteinDatabaseStatus.Datasets.UniProt,
+		proteinDatabaseStatus.Datasets.UniRef90,
+		proteinDatabaseStatus.Datasets.RNACentral,
+		proteinDatabaseStatus.Datasets.PDB,
+		proteinDatabaseStatus.Datasets.PDBSeqReq,
+		proteinDatabaseStatus.Datasets.NT,
+		proteinDatabaseStatus.Datasets.MGYClusters,
+	}
+
+	for _, progress := range progresses {
+		size += progress.Size
+		totalSize += progress.TotalSize
+		delta += progress.Delta
+		if progress.DeltaDuration != nil {
+			deltaDuration += progress.DeltaDuration.Duration
+		}
+	}
+
+	proteinDatabaseStatus.Size = util.FormatSize(size)
+	proteinDatabaseStatus.TotalSize = util.FormatSize(totalSize)
+	if totalSize > 0 {
+		proteinDatabaseStatus.Progress = util.FormatPercentage(size, totalSize)
+	}
+	proteinDatabaseStatus.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(delta, deltaDuration))
+
+	if size == 0 {
+		proteinDatabaseStatus.DownloadStatus = datav1.ProteinDatabaseDownloadStatusNotStarted
+	} else if size > 0 && size < totalSize {
+		proteinDatabaseStatus.DownloadStatus = datav1.ProteinDatabaseDownloadStatusDownloading
+	} else if size == totalSize {
+		proteinDatabaseStatus.DownloadStatus = datav1.ProteinDatabaseDownloadStatusCompleted
+	}
+}
 
 func (o *logObserver) updateStatus(ctx context.Context, pd *datav1.ProteinDatabase, proteinDatabaseStatus *datav1.ProteinDatabaseStatus) error {
 	proteinDatabase := &datav1.ProteinDatabase{}
 	if err := o.client.Get(ctx, types.NamespacedName{Name: pd.Name, Namespace: pd.Namespace}, proteinDatabase); err != nil {
 		return fmt.Errorf("failed to get latest ProteinDatabase: %w", err)
 	}
+
+	o.aggregateDownloadMetrics(proteinDatabaseStatus)
 
 	proteinDatabase.Status = *proteinDatabaseStatus
 	proteinDatabase.Status.LastUpdate = util.GetNow()
