@@ -304,7 +304,6 @@ func (o *logObserver) aggregateDownloadMetrics(proteinDatabaseStatus *datav1.Pro
 	var size int64
 	var totalSize int64
 	var delta int64
-	var deltaDuration time.Duration
 
 	progresses := []datav1.ProteinDatabaseDatasetDownloadProgress{
 		proteinDatabaseStatus.Datasets.RFam,
@@ -321,9 +320,8 @@ func (o *logObserver) aggregateDownloadMetrics(proteinDatabaseStatus *datav1.Pro
 	for _, progress := range progresses {
 		size += progress.Size
 		totalSize += progress.TotalSize
-		delta += progress.Delta
-		if progress.DeltaDuration != nil {
-			deltaDuration += progress.DeltaDuration.Duration
+		if progress.DeltaDuration != nil && progress.DeltaDuration.Duration == time.Second {
+			delta += progress.Delta
 		}
 	}
 
@@ -332,7 +330,7 @@ func (o *logObserver) aggregateDownloadMetrics(proteinDatabaseStatus *datav1.Pro
 	if totalSize > 0 {
 		proteinDatabaseStatus.Progress = util.FormatPercentage(size, totalSize)
 	}
-	proteinDatabaseStatus.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(delta, deltaDuration))
+	proteinDatabaseStatus.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(delta, time.Second))
 
 	if size == 0 {
 		proteinDatabaseStatus.DownloadStatus = datav1.ProteinDatabaseDownloadStatusNotStarted
