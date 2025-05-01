@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- data_v1_proteindatabase.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

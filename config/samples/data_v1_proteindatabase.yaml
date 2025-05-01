@@ -1,0 +1,20 @@
+apiVersion: data.kubefold.io/v1
+kind: ProteinDatabase
+metadata:
+  labels:
+    app.kubernetes.io/name: kubefold
+    app.kubernetes.io/managed-by: kustomize
+  name: proteindatabase-sample
+spec:
+  datasets:
+    bfd: true
+    mgyclusters: true
+    nt: true
+    pdb: true
+    pdbseqreq: true
+    rfam: true
+    rnacentral: true
+    uniref90: true
+    uniprot: true
+  volume:
+    storageClassName: fsx-sc
