@@ -13,6 +13,6 @@ spec:
     pdb: false
     pdbseqreq: true
     rfam: true
-    rnacentral: true
+    rnacentral: false
     uniref90: false
     uniprot: false

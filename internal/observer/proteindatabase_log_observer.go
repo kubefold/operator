@@ -197,11 +197,103 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 					progress.DownloadSpeed = ""
 				}
 				proteinDatabaseStatus.Datasets.RFam = progress
-				break
 			case downloaderTypes.DatasetBFD:
-				break
+				if proteinDatabaseStatus.Datasets.BFD.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.BFD.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.BFD.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.BFD = progress
+			case downloaderTypes.DatasetUniProt:
+				if proteinDatabaseStatus.Datasets.UniProt.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.UniProt.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.UniProt.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.UniProt = progress
+			case downloaderTypes.DatasetUniRef90:
+				if proteinDatabaseStatus.Datasets.UniRef90.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.UniRef90.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.UniRef90.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.UniRef90 = progress
+			case downloaderTypes.DatasetRNACentral:
+				if proteinDatabaseStatus.Datasets.RNACentral.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.RNACentral.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.RNACentral.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.RNACentral = progress
+			case downloaderTypes.DatasetPDB:
+				if proteinDatabaseStatus.Datasets.PDB.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.PDB.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.PDB.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.PDB = progress
+			case downloaderTypes.DatasetPDBSeqReq:
+				if proteinDatabaseStatus.Datasets.PDBSeqReq.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.PDBSeqReq.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.PDBSeqReq.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.PDBSeqReq = progress
+			case downloaderTypes.DatasetNT:
+				if proteinDatabaseStatus.Datasets.NT.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.NT.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.NT.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.NT = progress
+			case downloaderTypes.DatasetMGYClusters:
+				if proteinDatabaseStatus.Datasets.MGYClusters.LastUpdate != nil {
+					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.MGYClusters.Size
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.MGYClusters.LastUpdate.Time)}
+					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
+				}
+				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
+					progress.Delta = 0
+					progress.DeltaDuration = nil
+					progress.DownloadSpeed = ""
+				}
+				proteinDatabaseStatus.Datasets.MGYClusters = progress
 			}
-
 		}
 	}
 
