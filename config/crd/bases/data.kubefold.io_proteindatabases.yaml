@@ -63,22 +63,58 @@ spec:
                 properties:
                   bfd:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   mgyclusters:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   nt:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   pdb:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   pdbseqreq:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   rfam:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   rnacentral:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   uniprot:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                   uniref90:
                     type: boolean
+                    x-kubernetes-validations:
+                    - message: Dataset can only be enabled. Deletion of dataset is
+                        not supported yet
+                      rule: self == oldSelf || (self == true && oldSelf == false)
                 required:
                 - bfd
                 - mgyclusters

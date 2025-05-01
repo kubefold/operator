@@ -17,15 +17,24 @@ type ProteinDatabaseVolume struct {
 }
 
 type ProteinDatabaseDatasetSelection struct {
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
 	MGYClusters bool `json:"mgyclusters"`
-	BFD         bool `json:"bfd"`
-	UniRef90    bool `json:"uniref90"`
-	UniProt     bool `json:"uniprot"`
-	PDB         bool `json:"pdb"`
-	PDBSeqReq   bool `json:"pdbseqreq"`
-	RNACentral  bool `json:"rnacentral"`
-	NT          bool `json:"nt"`
-	RFam        bool `json:"rfam"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	BFD bool `json:"bfd"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	UniRef90 bool `json:"uniref90"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	UniProt bool `json:"uniprot"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	PDB bool `json:"pdb"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	PDBSeqReq bool `json:"pdbseqreq"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	RNACentral bool `json:"rnacentral"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	NT bool `json:"nt"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf || (self == true && oldSelf == false)",message="Dataset can only be enabled. Deletion of dataset is not supported yet"
+	RFam bool `json:"rfam"`
 }
 
 type ProteinDatabaseSpec struct {
