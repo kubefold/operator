@@ -8,7 +8,7 @@ const (
 	ProteinDatabaseFinalizer        = "data.kubefold.io/finalizer"
 	PersistentVolumeClaimNameSuffix = "-data"
 	PersistentVolumeClaimSize       = "1Gi"
-	DownloaderImage                 = "ghcr.io/kubefold/downloader:v0.0.8"
+	DownloaderImage                 = "ghcr.io/kubefold/downloader:v0.0.9"
 	//DownloaderImage           = "downloader"
 	//DownloaderImagePullPolicy = "Never"
 	DownloaderImagePullPolicy = "Always"
