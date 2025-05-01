@@ -14,6 +14,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
 
+	downloaderTypes "github.com/kubefold/downloader/pkg/types"
 	datav1 "github.com/kubefold/operator/api/v1"
 )
 
@@ -35,7 +36,7 @@ func (j *JobHandler) ensureJobs(ctx context.Context, pd *datav1.ProteinDatabase,
 	return nil
 }
 
-func (j *JobHandler) ensureJob(ctx context.Context, pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset Dataset) error {
+func (j *JobHandler) ensureJob(ctx context.Context, pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset downloaderTypes.Dataset) error {
 	log := logf.FromContext(ctx)
 	jobName := strings.ReplaceAll(strings.ToLower(fmt.Sprintf("%s-%s-downloader", pd.Name, dataset.ShortName())), "_", "-")
 
@@ -64,7 +65,7 @@ func (j *JobHandler) ensureJob(ctx context.Context, pd *datav1.ProteinDatabase, 
 	return nil
 }
 
-func (j *JobHandler) createJobSpec(pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset Dataset, jobName string) *batchv1.Job {
+func (j *JobHandler) createJobSpec(pd *datav1.ProteinDatabase, pvc *corev1.PersistentVolumeClaim, dataset downloaderTypes.Dataset, jobName string) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
