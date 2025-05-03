@@ -306,8 +306,11 @@ func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.
 		Sequences: []alphafold.Sequence{
 			{
 				Protein: alphafold.Protein{
-					Sequence: pred.Spec.Protein.Sequence,
-					ID:       pred.Spec.Protein.ID,
+					Sequence:    pred.Spec.Protein.Sequence,
+					ID:          pred.Spec.Protein.ID,
+					UnpairedMSA: make([]int, 0),
+					PairedMSA:   make([]int, 0),
+					Templates:   make([]string, 0),
 				},
 			},
 		},
@@ -492,7 +495,7 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							},
 							Args: []string{
 								"-c",
-								fmt.Sprintf("-c mkdir -p /data/models; wget -O /data/models/af3.bin.zst %s; unzstd /data/models/af3.bin.zst", pred.Spec.Model.Weights.HTTP),
+								fmt.Sprintf("mkdir -p /data/models; wget -O /data/models/af3.bin.zst %s; unzstd /data/models/af3.bin.zst", pred.Spec.Model.Weights.HTTP),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
