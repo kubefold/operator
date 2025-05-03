@@ -260,14 +260,25 @@ spec:
                 type: object
               protein:
                 properties:
+                  id:
+                    items:
+                      type: string
+                    type: array
+                    x-kubernetes-validations:
+                    - message: Value is immutable
+                      rule: self == oldSelf
                   sequence:
                     type: string
                     x-kubernetes-validations:
                     - message: Value is immutable
                       rule: self == oldSelf
                 required:
+                - id
                 - sequence
                 type: object
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
             required:
             - database
             - destination

@@ -8,6 +8,8 @@ import (
 type ProteinConformationPredictionProtein struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Sequence string `json:"sequence"`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
+	ID []string `json:"id"`
 }
 
 type ProteinConformationPredictionModel struct {
@@ -29,6 +31,7 @@ type ProteinConformationPredictionJob struct {
 }
 
 type ProteinConformationPredictionSpec struct {
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Protein       ProteinConformationPredictionProtein       `json:"protein"`
 	Model         ProteinConformationPredictionModel         `json:"model,omitempty"`
 	Destination   ProteinConformationPredictionDestination   `json:"destination"`

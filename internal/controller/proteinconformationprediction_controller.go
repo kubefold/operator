@@ -18,7 +18,10 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/kubefold/operator/internal/alphafold"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -66,6 +69,48 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 		return ctrl.Result{}, err
 	}
 
+	// Check for job failures regardless of the current phase
+	// This ensures we catch failures even if they happen unexpectedly
+	if pred.Status.Phase != datav1.ProteinConformationPredictionStatusPhaseFailed &&
+		pred.Status.Phase != datav1.ProteinConformationPredictionStatusPhaseCompleted {
+
+		// Check search job
+		searchJobName := fmt.Sprintf("%s-search", pred.Name)
+		searchJob := &batchv1.Job{}
+		err := r.Get(ctx, types.NamespacedName{Name: searchJobName, Namespace: pred.Namespace}, searchJob)
+		if err == nil {
+			// Job exists, check for failures
+			if searchJob.Status.Failed > 0 {
+				log.Info("Search job failed, updating status", "Job", searchJobName)
+				pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+				if err := r.Status().Update(ctx, pred); err != nil {
+					log.Error(err, "Failed to update ProteinConformationPrediction status")
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
+			}
+		}
+
+		// Check prediction job, only if we're past the search phase
+		if pred.Status.Phase == datav1.ProteinConformationPredictionStatusPhasePredicting {
+			predJobName := fmt.Sprintf("%s-predict", pred.Name)
+			predJob := &batchv1.Job{}
+			err := r.Get(ctx, types.NamespacedName{Name: predJobName, Namespace: pred.Namespace}, predJob)
+			if err == nil {
+				// Job exists, check for failures
+				if predJob.Status.Failed > 0 {
+					log.Info("Prediction job failed, updating status", "Job", predJobName)
+					pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+					if err := r.Status().Update(ctx, pred); err != nil {
+						log.Error(err, "Failed to update ProteinConformationPrediction status")
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				}
+			}
+		}
+	}
+
 	// Initialize status if not set
 	if pred.Status.Phase == "" {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseNotStarted
@@ -98,10 +143,23 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.Context, pred *datav1.ProteinConformationPrediction) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
+	// Verify that the specified ProteinDatabase exists
+	proteinDB := &datav1.ProteinDatabase{}
+	err := r.Get(ctx, types.NamespacedName{Name: pred.Spec.Database, Namespace: pred.Namespace}, proteinDB)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Database doesn't exist yet, requeue to check again later
+			log.Info("Waiting for ProteinDatabase to be created", "Database", pred.Spec.Database)
+			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+		}
+		log.Error(err, "Failed to get ProteinDatabase")
+		return ctrl.Result{}, err
+	}
+
 	// Create PVC first
 	pvcName := fmt.Sprintf("%s-data", pred.Name)
 	pvc := &corev1.PersistentVolumeClaim{}
-	err := r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: pred.Namespace}, pvc)
+	err = r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: pred.Namespace}, pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Create the PVC
@@ -127,8 +185,14 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 	err = r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			encodedInput, err := r.prepareFoldInput(pred)
+			if err != nil {
+				log.Error(err, "Failed to prepare FoldInput")
+				return ctrl.Result{}, err
+			}
+
 			// Create the search job
-			job = r.newSearchJob(pred, jobName, pvcName)
+			job = r.newSearchJob(pred, jobName, pvcName, encodedInput)
 			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for search job")
 				return ctrl.Result{}, err
@@ -288,8 +352,32 @@ func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinCon
 	}
 }
 
+func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.ProteinConformationPrediction) (string, error) {
+	input := alphafold.Input{
+		Name: fmt.Sprintf("%s-%s", pred.Namespace, pred.Name),
+		Sequences: []alphafold.Sequence{
+			{
+				Protein: alphafold.Protein{
+					Sequence: pred.Spec.Protein.Sequence,
+					ID:       pred.Spec.Protein.ID,
+				},
+			},
+		},
+		ModelSeeds: pred.Spec.Model.Seeds,
+		Dialect:    "alphafold3",
+		Version:    1,
+	}
+
+	inputJson, err := json.Marshal(input)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal fold input: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(inputJson), nil
+}
+
 // Helper function to create a new search job
-func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName string) *batchv1.Job {
+func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job {
 	// Set up environment variables, volumes, and volume mounts
 	backoffLimit := int32(2)
 
@@ -307,6 +395,37 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					InitContainers: []corev1.Container{
+						{
+							Name:            "init",
+							Image:           ManagerImage,
+							ImagePullPolicy: ManagerImagePullPolicy,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "INPUT_PATH",
+									Value: "/data/af_input",
+								},
+								{
+									Name:  "OUTPUT_PATH",
+									Value: "/data/af_output",
+								},
+								{
+									Name:  "ENCODED_INPUT",
+									Value: encodedInput,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "data",
+									MountPath: "/data",
+								},
+								{
+									Name:      "database",
+									MountPath: "/public_databases",
+								},
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "search",
