@@ -13,9 +13,9 @@ type Sequence struct {
 }
 
 type Protein struct {
-	ID          []string `json:"id"`
-	Sequence    string   `json:"sequence"`
-	UnpairedMSA string   `json:"unpairedMsa"`
-	PairedMSA   string   `json:"pairedMsa"`
-	Templates   []string `json:"templates"`
+	ID          []string  `json:"id"`
+	Sequence    string    `json:"sequence"`
+	UnpairedMSA *string   `json:"unpairedMsa,omitempty"`
+	PairedMSA   *string   `json:"pairedMsa,omitempty"`
+	Templates   *[]string `json:"templates,omitempty"`
 }

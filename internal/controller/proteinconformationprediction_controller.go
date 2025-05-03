@@ -166,7 +166,7 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 	err = r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			encodedInput, err := r.prepareFoldInput(pred)
+			encodedInput, err := r.prepareFoldInput(pred, false)
 			if err != nil {
 				log.Error(err, "Failed to prepare FoldInput")
 				return ctrl.Result{}, err
@@ -240,8 +240,14 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 	err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			encodedInput, err := r.prepareFoldInput(pred, true)
+			if err != nil {
+				log.Error(err, "Failed to prepare FoldInput")
+				return ctrl.Result{}, err
+			}
+
 			pvcName := fmt.Sprintf("%s-data", pred.Name)
-			job = r.newPredictionJob(pred, jobName, pvcName)
+			job = r.newPredictionJob(pred, jobName, pvcName, encodedInput)
 			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for prediction job")
 				return ctrl.Result{}, err
@@ -367,21 +373,27 @@ func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinCon
 	}
 }
 
-func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.ProteinConformationPrediction) (string, error) {
+func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.ProteinConformationPrediction, prediction bool) (string, error) {
 	input := alphafold.Input{
 		Name: fmt.Sprintf("%s-%s", pred.Namespace, pred.Name),
 		Sequences: []alphafold.Sequence{
 			{
 				Protein: alphafold.Protein{
-					Sequence:  pred.Spec.Protein.Sequence,
-					ID:        pred.Spec.Protein.ID,
-					Templates: make([]string, 0),
+					Sequence: pred.Spec.Protein.Sequence,
+					ID:       pred.Spec.Protein.ID,
 				},
 			},
 		},
 		ModelSeeds: pred.Spec.Model.Seeds,
 		Dialect:    "alphafold3",
 		Version:    1,
+	}
+	if prediction {
+		empty := ""
+		emptyList := make([]string, 0)
+		input.Sequences[0].Protein.Templates = &emptyList
+		input.Sequences[0].Protein.UnpairedMSA = &empty
+		input.Sequences[0].Protein.PairedMSA = &empty
 	}
 
 	inputJson, err := json.Marshal(input)
@@ -518,7 +530,7 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 	return job
 }
 
-func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName string) *batchv1.Job {
+func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job {
 
 	backoffLimit := int32(2)
 
@@ -551,6 +563,35 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
 					InitContainers: []corev1.Container{
+						{
+							Name:            "input-placement",
+							Image:           ManagerImage,
+							ImagePullPolicy: ManagerImagePullPolicy,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "INPUT_PATH",
+									Value: "/data/af_input",
+								},
+								{
+									Name:  "OUTPUT_PATH",
+									Value: "/data/af_output",
+								},
+								{
+									Name:  "ENCODED_INPUT",
+									Value: encodedInput,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "data",
+									MountPath: "/data",
+								},
+								{
+									Name:      "database",
+									MountPath: "/public_databases",
+								},
+							},
+						},
 						{
 							Name:            "weights-placement",
 							Image:           ManagerImage,
