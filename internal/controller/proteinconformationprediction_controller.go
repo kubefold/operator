@@ -1,19 +1,3 @@
-/*
-Copyright 2025 Mateusz Woźniak <wozniakmat@student.agh.edu.pl>.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controller
 
 import (
@@ -22,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kubefold/operator/internal/alphafold"
+	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -39,7 +24,6 @@ import (
 	datav1 "github.com/kubefold/operator/api/v1"
 )
 
-// ProteinConformationPredictionReconciler reconciles a ProteinConformationPrediction object
 type ProteinConformationPredictionReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -51,35 +35,26 @@ type ProteinConformationPredictionReconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// Fetch the ProteinConformationPrediction instance
 	pred := &datav1.ProteinConformationPrediction{}
 	err := r.Get(ctx, req.NamespacedName, pred)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Object not found, return
 			return ctrl.Result{}, nil
 		}
-		// Error reading the object - requeue the request
 		log.Error(err, "Failed to get ProteinConformationPrediction")
 		return ctrl.Result{}, err
 	}
 
-	// Check for job failures regardless of the current phase
-	// This ensures we catch failures even if they happen unexpectedly
 	if pred.Status.Phase != datav1.ProteinConformationPredictionStatusPhaseFailed &&
 		pred.Status.Phase != datav1.ProteinConformationPredictionStatusPhaseCompleted {
 
-		// Check search job
 		searchJobName := fmt.Sprintf("%s-search", pred.Name)
 		searchJob := &batchv1.Job{}
 		err := r.Get(ctx, types.NamespacedName{Name: searchJobName, Namespace: pred.Namespace}, searchJob)
 		if err == nil {
-			// Job exists, check for failures
 			if searchJob.Status.Failed > 0 {
 				log.Info("Search job failed, updating status", "Job", searchJobName)
 				pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
@@ -91,13 +66,11 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 			}
 		}
 
-		// Check prediction job, only if we're past the search phase
 		if pred.Status.Phase == datav1.ProteinConformationPredictionStatusPhasePredicting {
 			predJobName := fmt.Sprintf("%s-predict", pred.Name)
 			predJob := &batchv1.Job{}
 			err := r.Get(ctx, types.NamespacedName{Name: predJobName, Namespace: pred.Namespace}, predJob)
 			if err == nil {
-				// Job exists, check for failures
 				if predJob.Status.Failed > 0 {
 					log.Info("Prediction job failed, updating status", "Job", predJobName)
 					pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
@@ -111,7 +84,6 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 		}
 	}
 
-	// Initialize status if not set
 	if pred.Status.Phase == "" {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseNotStarted
 		if err := r.Status().Update(ctx, pred); err != nil {
@@ -121,7 +93,6 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// Handle different phases
 	switch pred.Status.Phase {
 	case datav1.ProteinConformationPredictionStatusPhaseNotStarted:
 		return r.handleNotStarted(ctx, pred)
@@ -130,25 +101,20 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 	case datav1.ProteinConformationPredictionStatusPhasePredicting:
 		return r.handlePredicting(ctx, pred)
 	case datav1.ProteinConformationPredictionStatusPhaseCompleted, datav1.ProteinConformationPredictionStatusPhaseFailed:
-		// Nothing to do for these terminal states
 		return ctrl.Result{}, nil
 	default:
-		// Unknown state
 		log.Info("Unknown phase", "Phase", pred.Status.Phase)
 		return ctrl.Result{}, nil
 	}
 }
 
-// handleNotStarted handles the NotStarted phase - creates PVC and first stage job
 func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.Context, pred *datav1.ProteinConformationPrediction) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// Verify that the specified ProteinDatabase exists
 	proteinDB := &datav1.ProteinDatabase{}
 	err := r.Get(ctx, types.NamespacedName{Name: pred.Spec.Database, Namespace: pred.Namespace}, proteinDB)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Database doesn't exist yet, requeue to check again later
 			log.Info("Waiting for ProteinDatabase to be created", "Database", pred.Spec.Database)
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
@@ -156,13 +122,11 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 		return ctrl.Result{}, err
 	}
 
-	// Create PVC first
 	pvcName := fmt.Sprintf("%s-data", pred.Name)
 	pvc := &corev1.PersistentVolumeClaim{}
 	err = r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: pred.Namespace}, pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Create the PVC
 			pvc = r.newPVC(pred, pvcName)
 			if err := controllerutil.SetControllerReference(pred, pvc, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for PVC")
@@ -179,7 +143,6 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 		return ctrl.Result{}, err
 	}
 
-	// Check if the search job already exists
 	jobName := fmt.Sprintf("%s-search", pred.Name)
 	job := &batchv1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
@@ -191,7 +154,6 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 				return ctrl.Result{}, err
 			}
 
-			// Create the search job
 			job = r.newSearchJob(pred, jobName, pvcName, encodedInput)
 			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for search job")
@@ -202,7 +164,6 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 				return ctrl.Result{}, err
 			}
 
-			// Update status
 			pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseAligning
 			if err := r.Status().Update(ctx, pred); err != nil {
 				log.Error(err, "Failed to update ProteinConformationPrediction status")
@@ -219,11 +180,9 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 	return ctrl.Result{}, nil
 }
 
-// handleAligning handles the Aligning phase - waits for first job to complete
 func (r *ProteinConformationPredictionReconciler) handleAligning(ctx context.Context, pred *datav1.ProteinConformationPrediction) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// Check the status of the search job
 	jobName := fmt.Sprintf("%s-search", pred.Name)
 	job := &batchv1.Job{}
 	err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
@@ -232,9 +191,7 @@ func (r *ProteinConformationPredictionReconciler) handleAligning(ctx context.Con
 		return ctrl.Result{}, err
 	}
 
-	// Check if the job has completed
 	if job.Status.Succeeded > 0 {
-		// Update status to start prediction phase
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhasePredicting
 		if err := r.Status().Update(ctx, pred); err != nil {
 			log.Error(err, "Failed to update ProteinConformationPrediction status")
@@ -244,7 +201,6 @@ func (r *ProteinConformationPredictionReconciler) handleAligning(ctx context.Con
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// Check if the job has failed
 	if job.Status.Failed > 0 {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
 		if err := r.Status().Update(ctx, pred); err != nil {
@@ -255,21 +211,17 @@ func (r *ProteinConformationPredictionReconciler) handleAligning(ctx context.Con
 		return ctrl.Result{}, nil
 	}
 
-	// Job is still running, requeue after short delay
 	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 }
 
-// handlePredicting handles the Predicting phase - creates second job and waits for completion
 func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.Context, pred *datav1.ProteinConformationPrediction) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// Check if the prediction job already exists
 	jobName := fmt.Sprintf("%s-predict", pred.Name)
 	job := &batchv1.Job{}
 	err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Create the prediction job
 			pvcName := fmt.Sprintf("%s-data", pred.Name)
 			job = r.newPredictionJob(pred, jobName, pvcName)
 			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
@@ -287,21 +239,17 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 		return ctrl.Result{}, err
 	}
 
-	// Check if the job has completed
 	if job.Status.Succeeded > 0 {
-		// Update status to completed
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseCompleted
 		if err := r.Status().Update(ctx, pred); err != nil {
 			log.Error(err, "Failed to update ProteinConformationPrediction status")
 			return ctrl.Result{}, err
 		}
 
-		// Now that we're done, delete the PVC
 		pvcName := fmt.Sprintf("%s-data", pred.Name)
 		pvc := &corev1.PersistentVolumeClaim{}
 		err := r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: pred.Namespace}, pvc)
 		if err == nil {
-			// PVC exists, delete it
 			if err := r.Delete(ctx, pvc); err != nil {
 				log.Error(err, "Failed to delete PVC")
 				return ctrl.Result{}, err
@@ -313,7 +261,6 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 		return ctrl.Result{}, nil
 	}
 
-	// Check if the job has failed
 	if job.Status.Failed > 0 {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
 		if err := r.Status().Update(ctx, pred); err != nil {
@@ -324,11 +271,9 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 		return ctrl.Result{}, nil
 	}
 
-	// Job is still running, requeue after short delay
 	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 }
 
-// Helper function to create a new PVC
 func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinConformationPrediction, pvcName string) *corev1.PersistentVolumeClaim {
 	storageClass := "hostpath"
 
@@ -376,12 +321,9 @@ func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.
 	return base64.StdEncoding.EncodeToString(inputJson), nil
 }
 
-// Helper function to create a new search job
 func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job {
-	// Set up environment variables, volumes, and volume mounts
 	backoffLimit := int32(2)
 
-	// Setup the job
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -397,7 +339,7 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 					RestartPolicy: corev1.RestartPolicyNever,
 					InitContainers: []corev1.Container{
 						{
-							Name:            "init",
+							Name:            "input-placement",
 							Image:           ManagerImage,
 							ImagePullPolicy: ManagerImagePullPolicy,
 							Env: []corev1.EnvVar{
@@ -429,8 +371,13 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 					Containers: []corev1.Container{
 						{
 							Name:            "search",
-							Image:           "sleeper",
-							ImagePullPolicy: corev1.PullNever,
+							Image:           AlphafoldImage,
+							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Args: []string{
+								"--json_path=/data/af_input/fold_input.json",
+								"--model_dir=/data/models",
+								"--db_dir=/public_databases",
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
@@ -469,8 +416,6 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 	// Add node selector if specified
 	if pred.Spec.Job.SearchNodeSelector.NodeSelectorTerms != nil {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{}
-
-		// Convert NodeSelector to simple key-value pairs for the pod spec
 		for _, term := range pred.Spec.Job.SearchNodeSelector.NodeSelectorTerms {
 			for _, exp := range term.MatchExpressions {
 				if exp.Operator == corev1.NodeSelectorOpIn && len(exp.Values) > 0 {
@@ -483,12 +428,10 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 	return job
 }
 
-// Helper function to create a new prediction job
 func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName string) *batchv1.Job {
-	// Set up environment variables, volumes, and volume mounts
+
 	backoffLimit := int32(2)
 
-	// Setup the job
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName,
@@ -502,11 +445,37 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					InitContainers: []corev1.Container{
+						{
+							Name:            "weights-placement",
+							Image:           ManagerImage,
+							ImagePullPolicy: ManagerImagePullPolicy,
+							Command: []string{
+								"sh",
+							},
+							Args: strings.Split(fmt.Sprintf("-c wget -O /data/models/af3.bin.zst %s; unzstd /data/models/af3.bin.zst", pred.Spec.Model.Weights.HTTP), " "),
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "data",
+									MountPath: "/data",
+								},
+								{
+									Name:      "database",
+									MountPath: "/public_databases",
+								},
+							},
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "predict",
-							Image:           "sleeper",
-							ImagePullPolicy: corev1.PullNever,
+							Image:           AlphafoldImage,
+							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Args: []string{
+								"--json_path=/data/af_input/fold_input.json",
+								"--model_dir=/data/models",
+								"--db_dir=/public_databases",
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
@@ -542,11 +511,8 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 		},
 	}
 
-	// Add node selector if specified
 	if pred.Spec.Job.PredictionNodeSelector.NodeSelectorTerms != nil {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{}
-
-		// Convert NodeSelector to simple key-value pairs for the pod spec
 		for _, term := range pred.Spec.Job.PredictionNodeSelector.NodeSelectorTerms {
 			for _, exp := range term.MatchExpressions {
 				if exp.Operator == corev1.NodeSelectorOpIn && len(exp.Values) > 0 {
@@ -559,7 +525,6 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 	return job
 }
 
-// SetupWithManager sets up the controller with the Manager.
 func (r *ProteinConformationPredictionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&datav1.ProteinConformationPrediction{}).

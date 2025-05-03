@@ -12,9 +12,14 @@ type ProteinConformationPredictionProtein struct {
 	ID []string `json:"id"`
 }
 
+type ProteinConformationPredictionModelWeights struct {
+	HTTP string `json:"http"`
+}
+
 type ProteinConformationPredictionModel struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
-	Seeds []int `json:"seeds,omitempty"`
+	Seeds   []int                                     `json:"seeds,omitempty"`
+	Weights ProteinConformationPredictionModelWeights `json:"weights"`
 }
 
 type ProteinConformationPredictionDestination struct {

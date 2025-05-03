@@ -250,6 +250,15 @@ spec:
                     x-kubernetes-validations:
                     - message: Value is immutable
                       rule: self == oldSelf
+                  weights:
+                    properties:
+                      http:
+                        type: string
+                    required:
+                    - http
+                    type: object
+                required:
+                - weights
                 type: object
               notify:
                 properties:
