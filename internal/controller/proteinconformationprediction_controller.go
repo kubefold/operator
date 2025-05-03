@@ -81,6 +81,23 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 				}
 			}
 		}
+
+		if pred.Status.Phase == datav1.ProteinConformationPredictionStatusPhaseUploadingArtifacts {
+			uploadJobName := fmt.Sprintf("%s-upload", pred.Name)
+			uploadJob := &batchv1.Job{}
+			err := r.Get(ctx, types.NamespacedName{Name: uploadJobName, Namespace: pred.Namespace}, uploadJob)
+			if err == nil {
+				if uploadJob.Status.Failed > 0 {
+					log.Info("Upload job failed, updating status", "Job", uploadJobName)
+					pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+					if err := r.Status().Update(ctx, pred); err != nil {
+						log.Error(err, "Failed to update ProteinConformationPrediction status")
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{}, nil
+				}
+			}
+		}
 	}
 
 	if pred.Status.Phase == "" {
@@ -99,6 +116,8 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 		return r.handleAligning(ctx, pred)
 	case datav1.ProteinConformationPredictionStatusPhasePredicting:
 		return r.handlePredicting(ctx, pred)
+	case datav1.ProteinConformationPredictionStatusPhaseUploadingArtifacts:
+		return r.handleUploadingArtifacts(ctx, pred)
 	case datav1.ProteinConformationPredictionStatusPhaseCompleted, datav1.ProteinConformationPredictionStatusPhaseFailed:
 		return ctrl.Result{}, nil
 	default:
@@ -239,6 +258,54 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 	}
 
 	if job.Status.Succeeded > 0 {
+		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseUploadingArtifacts
+		if err := r.Status().Update(ctx, pred); err != nil {
+			log.Error(err, "Failed to update ProteinConformationPrediction status")
+			return ctrl.Result{}, err
+		}
+		log.Info("Prediction job completed, moving to uploading artifacts phase")
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	if job.Status.Failed > 0 {
+		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+		if err := r.Status().Update(ctx, pred); err != nil {
+			log.Error(err, "Failed to update ProteinConformationPrediction status")
+			return ctrl.Result{}, err
+		}
+		log.Info("Prediction job failed")
+		return ctrl.Result{}, nil
+	}
+
+	return ctrl.Result{RequeueAfter: time.Second * 10}, nil
+}
+
+func (r *ProteinConformationPredictionReconciler) handleUploadingArtifacts(ctx context.Context, pred *datav1.ProteinConformationPrediction) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
+	jobName := fmt.Sprintf("%s-upload", pred.Name)
+	job := &batchv1.Job{}
+	err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			pvcName := fmt.Sprintf("%s-data", pred.Name)
+			job = r.newUploadArtifactsJob(pred, jobName, pvcName)
+			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
+				log.Error(err, "Failed to set controller reference for upload artifacts job")
+				return ctrl.Result{}, err
+			}
+			if err := r.Create(ctx, job); err != nil {
+				log.Error(err, "Failed to create upload artifacts job")
+				return ctrl.Result{}, err
+			}
+			log.Info("Created upload artifacts job", "Name", jobName)
+			return ctrl.Result{Requeue: true}, nil
+		}
+		log.Error(err, "Failed to get upload artifacts job")
+		return ctrl.Result{}, err
+	}
+
+	if job.Status.Succeeded > 0 {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseCompleted
 		if err := r.Status().Update(ctx, pred); err != nil {
 			log.Error(err, "Failed to update ProteinConformationPrediction status")
@@ -256,7 +323,7 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 			log.Info("Deleted PVC", "Name", pvcName)
 		}
 
-		log.Info("Prediction job completed, resource is now in completed state")
+		log.Info("Upload artifacts job completed, resource is now in completed state")
 		return ctrl.Result{}, nil
 	}
 
@@ -266,7 +333,7 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 			log.Error(err, "Failed to update ProteinConformationPrediction status")
 			return ctrl.Result{}, err
 		}
-		log.Info("Prediction job failed")
+		log.Info("Upload artifacts job failed")
 		return ctrl.Result{}, nil
 	}
 
@@ -575,6 +642,97 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 				}
 			}
 		}
+	}
+
+	return job
+}
+
+func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName string) *batchv1.Job {
+	backoffLimit := int32(2)
+
+	var phoneNumbers string
+	if len(pred.Spec.Notifications.SMS) > 0 {
+		phoneNumbers = pred.Spec.Notifications.SMS[0]
+		for i := 1; i < len(pred.Spec.Notifications.SMS); i++ {
+			phoneNumbers += "," + pred.Spec.Notifications.SMS[i]
+		}
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      jobName,
+			Namespace: pred.Namespace,
+			Labels: map[string]string{
+				"app":                          pred.Name,
+				"data.kubefold.io/prediction":  pred.Name,
+				"data.kubefold.io/step":        "upload",
+				"app.kubernetes.io/name":       "proteinconformationprediction-upload",
+				"app.kubernetes.io/instance":   pred.Name,
+				"app.kubernetes.io/managed-by": "kubefold-operator",
+			},
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: &backoffLimit,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app":                          pred.Name,
+						"data.kubefold.io/prediction":  pred.Name,
+						"data.kubefold.io/step":        "upload",
+						"app.kubernetes.io/name":       "proteinconformationprediction-upload",
+						"app.kubernetes.io/instance":   pred.Name,
+						"app.kubernetes.io/managed-by": "kubefold-operator",
+					},
+				},
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyNever,
+					Containers: []corev1.Container{
+						{
+							Name:            "upload",
+							Image:           ManagerImage,
+							ImagePullPolicy: ManagerImagePullPolicy,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "BUCKET",
+									Value: pred.Spec.Destination.S3,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "data",
+									MountPath: "/data",
+								},
+							},
+						},
+						{
+							Name:            "notify",
+							Image:           ManagerImage,
+							ImagePullPolicy: ManagerImagePullPolicy,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "NOTIFICATION_PHONES",
+									Value: phoneNumbers,
+								},
+								{
+									Name:  "NOTIFICATION_MESSAGE",
+									Value: "Job done",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "data",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvcName,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	return job

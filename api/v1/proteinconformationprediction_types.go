@@ -48,11 +48,12 @@ type ProteinConformationPredictionSpec struct {
 type ProteinConformationPredictionStatusPhase string
 
 const (
-	ProteinConformationPredictionStatusPhaseNotStarted ProteinConformationPredictionStatusPhase = "NotStarted"
-	ProteinConformationPredictionStatusPhaseAligning   ProteinConformationPredictionStatusPhase = "Aligning"
-	ProteinConformationPredictionStatusPhasePredicting ProteinConformationPredictionStatusPhase = "Predicting"
-	ProteinConformationPredictionStatusPhaseCompleted  ProteinConformationPredictionStatusPhase = "Completed"
-	ProteinConformationPredictionStatusPhaseFailed     ProteinConformationPredictionStatusPhase = "Failed"
+	ProteinConformationPredictionStatusPhaseNotStarted         ProteinConformationPredictionStatusPhase = "NotStarted"
+	ProteinConformationPredictionStatusPhaseAligning           ProteinConformationPredictionStatusPhase = "Aligning"
+	ProteinConformationPredictionStatusPhasePredicting         ProteinConformationPredictionStatusPhase = "Predicting"
+	ProteinConformationPredictionStatusPhaseUploadingArtifacts ProteinConformationPredictionStatusPhase = "UploadingArtifacts"
+	ProteinConformationPredictionStatusPhaseCompleted          ProteinConformationPredictionStatusPhase = "Completed"
+	ProteinConformationPredictionStatusPhaseFailed             ProteinConformationPredictionStatusPhase = "Failed"
 )
 
 type ProteinConformationPredictionStatus struct {
