@@ -306,11 +306,9 @@ func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.
 		Sequences: []alphafold.Sequence{
 			{
 				Protein: alphafold.Protein{
-					Sequence:    pred.Spec.Protein.Sequence,
-					ID:          pred.Spec.Protein.ID,
-					UnpairedMSA: make([]int, 0),
-					PairedMSA:   make([]int, 0),
-					Templates:   make([]string, 0),
+					Sequence:  pred.Spec.Protein.Sequence,
+					ID:        pred.Spec.Protein.ID,
+					Templates: make([]string, 0),
 				},
 			},
 		},
