@@ -270,10 +270,14 @@ spec:
                 type: object
               notify:
                 properties:
+                  region:
+                    type: string
                   sms:
                     items:
                       type: string
                     type: array
+                required:
+                - region
                 type: object
               protein:
                 properties:

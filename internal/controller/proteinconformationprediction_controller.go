@@ -776,6 +776,10 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 									Name:  "NOTIFICATION_MESSAGE",
 									Value: "Job done",
 								},
+								{
+									Name:  "AWS_REGION",
+									Value: pred.Spec.Destination.S3.Region,
+								},
 							},
 						},
 					},

@@ -20,5 +20,6 @@ spec:
       bucket: kubefold-artifacts-sample
       region: eu-central-1
   notify:
+    region: eu-central-1
     sms:
       - "+48505506682"
