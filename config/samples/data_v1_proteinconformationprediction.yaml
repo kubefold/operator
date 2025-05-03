@@ -16,7 +16,9 @@ spec:
     seeds:
       - 1
   destination:
-    s3: s3://kubefold-artifacts-sample/out
+    s3:
+      bucket: kubefold-artifacts-sample
+      region: us-east-1
   notify:
     sms:
       - "+48505506682"

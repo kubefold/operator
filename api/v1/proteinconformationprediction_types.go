@@ -22,8 +22,13 @@ type ProteinConformationPredictionModel struct {
 	Weights ProteinConformationPredictionModelWeights `json:"weights"`
 }
 
+type ProteinConformationPredictionDestinationS3 struct {
+	Bucket string `json:"bucket"`
+	Region string `json:"region"`
+}
+
 type ProteinConformationPredictionDestination struct {
-	S3 string `json:"s3"`
+	S3 ProteinConformationPredictionDestinationS3 `json:"s3"`
 }
 
 type ProteinConformationPredictionNotifications struct {

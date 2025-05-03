@@ -700,7 +700,11 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 								},
 								{
 									Name:  "BUCKET",
-									Value: pred.Spec.Destination.S3,
+									Value: pred.Spec.Destination.S3.Bucket,
+								},
+								{
+									Name:  "AWS_REGION",
+									Value: pred.Spec.Destination.S3.Region,
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
