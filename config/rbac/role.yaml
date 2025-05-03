@@ -5,9 +5,9 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - ""
+  - data.kubefold.io
   resources:
-  - persistentvolumeclaims
+  - proteinconformationpredictions
   verbs:
   - create
   - delete
@@ -19,25 +19,13 @@ rules:
 - apiGroups:
   - data.kubefold.io
   resources:
-  - proteindatabases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - data.kubefold.io
-  resources:
-  - proteindatabases/finalizers
+  - proteinconformationpredictions/finalizers
   verbs:
   - update
 - apiGroups:
   - data.kubefold.io
   resources:
-  - proteindatabases/status
+  - proteinconformationpredictions/status
   verbs:
   - get
   - patch
