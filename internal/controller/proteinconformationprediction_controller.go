@@ -691,6 +691,14 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 							ImagePullPolicy: ManagerImagePullPolicy,
 							Env: []corev1.EnvVar{
 								{
+									Name:  "INPUT_PATH",
+									Value: "/data/af_input",
+								},
+								{
+									Name:  "OUTPUT_PATH",
+									Value: "/data/af_output",
+								},
+								{
 									Name:  "BUCKET",
 									Value: pred.Spec.Destination.S3,
 								},
@@ -707,6 +715,14 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 							Image:           ManagerImage,
 							ImagePullPolicy: ManagerImagePullPolicy,
 							Env: []corev1.EnvVar{
+								{
+									Name:  "INPUT_PATH",
+									Value: "/data/af_input",
+								},
+								{
+									Name:  "OUTPUT_PATH",
+									Value: "/data/af_output",
+								},
 								{
 									Name:  "NOTIFICATION_PHONES",
 									Value: phoneNumbers,
