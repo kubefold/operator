@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/kubefold/operator/internal/alphafold"
-	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -491,7 +490,10 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							Command: []string{
 								"sh",
 							},
-							Args: strings.Split(fmt.Sprintf("-c wget -O /data/models/af3.bin.zst %s; unzstd /data/models/af3.bin.zst", pred.Spec.Model.Weights.HTTP), " "),
+							Args: []string{
+								"-c",
+								fmt.Sprintf("-c mkdir -p /data/models; wget -O /data/models/af3.bin.zst %s; unzstd /data/models/af3.bin.zst", pred.Spec.Model.Weights.HTTP),
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
