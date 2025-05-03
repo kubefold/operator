@@ -5,8 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/kubefold/operator/internal/alphafold"
 	"time"
+
+	"github.com/kubefold/operator/internal/alphafold"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -166,7 +167,7 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 	err = r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			encodedInput, err := r.prepareFoldInput(pred, true)
+			encodedInput, err := r.prepareFoldInput(pred, false)
 			if err != nil {
 				log.Error(err, "Failed to prepare FoldInput")
 				return ctrl.Result{}, err
