@@ -282,7 +282,11 @@ func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinCon
 			Name:      pvcName,
 			Namespace: pred.Namespace,
 			Labels: map[string]string{
-				"app": pred.Name,
+				"app":                          pred.Name,
+				"data.kubefold.io/prediction":  pred.Name,
+				"app.kubernetes.io/name":       "proteinconformationprediction-data",
+				"app.kubernetes.io/instance":   pred.Name,
+				"app.kubernetes.io/managed-by": "kubefold-operator",
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -329,12 +333,27 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 			Name:      jobName,
 			Namespace: pred.Namespace,
 			Labels: map[string]string{
-				"app": pred.Name,
+				"app":                          pred.Name,
+				"data.kubefold.io/prediction":  pred.Name,
+				"data.kubefold.io/step":        "search",
+				"app.kubernetes.io/name":       "proteinconformationprediction-search",
+				"app.kubernetes.io/instance":   pred.Name,
+				"app.kubernetes.io/managed-by": "kubefold-operator",
 			},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: &backoffLimit,
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app":                          pred.Name,
+						"data.kubefold.io/prediction":  pred.Name,
+						"data.kubefold.io/step":        "search",
+						"app.kubernetes.io/name":       "proteinconformationprediction-search",
+						"app.kubernetes.io/instance":   pred.Name,
+						"app.kubernetes.io/managed-by": "kubefold-operator",
+					},
+				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
 					InitContainers: []corev1.Container{
@@ -437,12 +456,27 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 			Name:      jobName,
 			Namespace: pred.Namespace,
 			Labels: map[string]string{
-				"app": pred.Name,
+				"app":                          pred.Name,
+				"data.kubefold.io/prediction":  pred.Name,
+				"data.kubefold.io/step":        "predict",
+				"app.kubernetes.io/name":       "proteinconformationprediction-predict",
+				"app.kubernetes.io/instance":   pred.Name,
+				"app.kubernetes.io/managed-by": "kubefold-operator",
 			},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: &backoffLimit,
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app":                          pred.Name,
+						"data.kubefold.io/prediction":  pred.Name,
+						"data.kubefold.io/step":        "predict",
+						"app.kubernetes.io/name":       "proteinconformationprediction-predict",
+						"app.kubernetes.io/instance":   pred.Name,
+						"app.kubernetes.io/managed-by": "kubefold-operator",
+					},
+				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
 					InitContainers: []corev1.Container{
