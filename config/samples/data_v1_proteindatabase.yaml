@@ -7,14 +7,12 @@ metadata:
   name: proteindatabase-sample
 spec:
   datasets:
-    bfd: true
-    mgyclusters: true
-    nt: true
-    pdb: true
-    pdbseqreq: true
+    bfd: false
+    mgyclusters: false
+    nt: false
+    pdb: false
+    pdbseqreq: false
     rfam: true
-    rnacentral: true
-    uniref90: true
-    uniprot: true
-  volume:
-    storageClassName: fsx-sc
+    rnacentral: false
+    uniref90: false
+    uniprot: false

@@ -1,14 +1,17 @@
 package v1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type ProteinConformationPredictionProtein struct {
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Sequence string `json:"sequence"`
 }
 
 type ProteinConformationPredictionModel struct {
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Seeds []int `json:"seeds,omitempty"`
 }
 
@@ -20,11 +23,18 @@ type ProteinConformationPredictionNotifications struct {
 	SMS []string `json:"sms,omitempty"`
 }
 
+type ProteinConformationPredictionJob struct {
+	SearchNodeSelector     v1.NodeSelector `json:"searchNodeSelector,omitempty"`
+	PredictionNodeSelector v1.NodeSelector `json:"predictionNodeSelector,omitempty"`
+}
+
 type ProteinConformationPredictionSpec struct {
 	Protein       ProteinConformationPredictionProtein       `json:"protein"`
 	Model         ProteinConformationPredictionModel         `json:"model,omitempty"`
 	Destination   ProteinConformationPredictionDestination   `json:"destination"`
 	Notifications ProteinConformationPredictionNotifications `json:"notify,omitempty"`
+	Job           ProteinConformationPredictionJob           `json:"job,omitempty"`
+	Database      string                                     `json:"database"`
 }
 
 type ProteinConformationPredictionStatusPhase string
@@ -46,6 +56,7 @@ type ProteinConformationPredictionStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Sequence",type=string,JSONPath=`.status.sequencePrefix`
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 type ProteinConformationPrediction struct {
 	metav1.TypeMeta   `json:",inline"`
