@@ -166,7 +166,7 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 	err = r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			encodedInput, err := r.prepareFoldInput(pred, false)
+			encodedInput, err := r.prepareFoldInput(pred, true)
 			if err != nil {
 				log.Error(err, "Failed to prepare FoldInput")
 				return ctrl.Result{}, err
@@ -774,7 +774,7 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 								},
 								{
 									Name:  "NOTIFICATION_MESSAGE",
-									Value: "Job done",
+									Value: fmt.Sprintf("Protein Conformation Prediction %s in namespace %s completed. Artifacts has been uploaded to %s", pred.Name, pred.Namespace, pred.Spec.Destination.S3.Bucket),
 								},
 							},
 						},
