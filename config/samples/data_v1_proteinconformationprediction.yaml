@@ -19,4 +19,4 @@ spec:
     s3: s3://kubefold-artifacts-sample/out
   notify:
     sms:
-      - "505506682"
+      - "+48505506682"
