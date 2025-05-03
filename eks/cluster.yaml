@@ -6,8 +6,20 @@ metadata:
 
 managedNodeGroups:
   - name: ng-primary
-    instanceType: t3.medium
-    desiredCapacity: 2
+    instanceType: m5.xlarge
+    desiredCapacity: 1
+    ssh:
+      allow: true
+    subnets:
+      - "subnet-038b10f6f4ac5aacd"
+    iam:
+      withAddonPolicies:
+        ebs: true
+        fsx: true
+        efs: true
+  - name: ng-gpu
+    instanceType: g5.xlarge
+    desiredCapacity: 1
     ssh:
       allow: true
     subnets:

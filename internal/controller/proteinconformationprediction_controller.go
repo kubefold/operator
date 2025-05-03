@@ -516,7 +516,15 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 								"--output_dir=/data/af_output",
 								"--model_dir=/data/models",
 								"--db_dir=/public_databases",
-								"--run_data_pipeline=true",
+								"--run_data_pipeline=false",
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									"nvidia.com/gpu": resource.MustParse("1"),
+								},
+								Requests: corev1.ResourceList{
+									"nvidia.com/gpu": resource.MustParse("1"),
+								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
