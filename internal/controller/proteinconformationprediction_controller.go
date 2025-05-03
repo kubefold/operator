@@ -275,7 +275,7 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 }
 
 func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinConformationPrediction, pvcName string) *corev1.PersistentVolumeClaim {
-	storageClass := "hostpath"
+	storageClass := "fsx-sc"
 
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -392,10 +392,14 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 							Name:            "search",
 							Image:           AlphafoldImage,
 							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Command:         []string{"python"},
 							Args: []string{
+								"run_alphafold.py",
 								"--json_path=/data/af_input/fold_input.json",
+								"--output_dir=/data/af_output",
 								"--model_dir=/data/models",
 								"--db_dir=/public_databases",
+								"--run_inference=false",
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -505,10 +509,14 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							Name:            "predict",
 							Image:           AlphafoldImage,
 							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Command:         []string{"python"},
 							Args: []string{
+								"run_alphafold.py",
 								"--json_path=/data/af_input/fold_input.json",
+								"--output_dir=/data/af_output",
 								"--model_dir=/data/models",
 								"--db_dir=/public_databases",
+								"--run_data_pipeline=true",
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{

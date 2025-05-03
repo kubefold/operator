@@ -16,3 +16,5 @@ spec:
     rnacentral: true
     uniref90: true
     uniprot: true
+  volume:
+    storageClassName: fsx-sc
