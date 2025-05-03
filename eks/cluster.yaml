@@ -17,6 +17,9 @@ managedNodeGroups:
         ebs: true
         fsx: true
         efs: true
+      attachPolicyARNs:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
   - name: ng-gpu
     instanceType: g5.xlarge
     desiredCapacity: 1
@@ -29,6 +32,9 @@ managedNodeGroups:
         ebs: true
         fsx: true
         efs: true
+      attachPolicyARNs:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
 iam:
   withOIDC: true
   serviceAccounts:
