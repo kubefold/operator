@@ -103,6 +103,7 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 
 	if pred.Status.Phase == "" {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseNotStarted
+		pred.Status.SequencePrefix = pred.Spec.Protein.Sequence[:10] + "..."
 		if err := r.Status().Update(ctx, pred); err != nil {
 			log.Error(err, "Failed to update ProteinConformationPrediction status")
 			return ctrl.Result{}, err
