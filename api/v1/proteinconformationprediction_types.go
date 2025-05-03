@@ -32,7 +32,8 @@ type ProteinConformationPredictionDestination struct {
 }
 
 type ProteinConformationPredictionNotifications struct {
-	SMS []string `json:"sms,omitempty"`
+	SMS    []string `json:"sms,omitempty"`
+	Region string   `json:"region"`
 }
 
 type ProteinConformationPredictionJob struct {
