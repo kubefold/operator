@@ -5,21 +5,6 @@ metadata:
   region: eu-central-1
 
 managedNodeGroups:
-  - name: ng-primary
-    instanceType: m5.xlarge
-    desiredCapacity: 1
-    ssh:
-      allow: true
-    subnets:
-      - "subnet-038b10f6f4ac5aacd"
-    iam:
-      withAddonPolicies:
-        ebs: true
-        fsx: true
-        efs: true
-      attachPolicyARNs:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
   - name: ng-gpu
     instanceType: g5.xlarge
     desiredCapacity: 1
@@ -35,6 +20,7 @@ managedNodeGroups:
       attachPolicyARNs:
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
+        
 iam:
   withOIDC: true
   serviceAccounts:
