@@ -91,3 +91,9 @@ func (r *ProteinDatabaseReconciler) updateStatus(ctx context.Context, pd *datav1
 	pdCopy.Status.VolumeName = pvc.Spec.VolumeName
 	return r.Status().Update(ctx, pdCopy)
 }
+
+//+kubebuilder:rbac:groups=data.kubefold.io,resources=proteindatabases,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=data.kubefold.io,resources=proteindatabases/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=data.kubefold.io,resources=proteindatabases/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
