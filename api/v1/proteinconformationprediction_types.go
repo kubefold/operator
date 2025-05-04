@@ -16,10 +16,18 @@ type ProteinConformationPredictionModelWeights struct {
 	HTTP string `json:"http"`
 }
 
+type ProteinConformationPredictionModelVolume struct {
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty" protobuf:"bytes,5,opt,name=storageClassName"`
+	// +optional
+	Selector *metav1.LabelSelector `json:"selector,omitempty" protobuf:"bytes,4,opt,name=selector"`
+}
+
 type ProteinConformationPredictionModel struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Seeds   []int                                     `json:"seeds,omitempty"`
 	Weights ProteinConformationPredictionModelWeights `json:"weights"`
+	Volume  ProteinConformationPredictionModelVolume  `json:"volume,omitempty"`
 }
 
 type ProteinConformationPredictionDestinationS3 struct {
@@ -49,6 +57,7 @@ type ProteinConformationPredictionSpec struct {
 	Notifications ProteinConformationPredictionNotifications `json:"notify,omitempty"`
 	Job           ProteinConformationPredictionJob           `json:"job,omitempty"`
 	Database      string                                     `json:"database"`
+	StorageClass  string                                     `json:"storageClass,omitempty"`
 }
 
 type ProteinConformationPredictionStatusPhase string
@@ -65,6 +74,8 @@ const (
 type ProteinConformationPredictionStatus struct {
 	Phase          ProteinConformationPredictionStatusPhase `json:"phase,omitempty"`
 	SequencePrefix string                                   `json:"sequencePrefix,omitempty"`
+	Error          string                                   `json:"error,omitempty"`
+	RetryCount     int32                                    `json:"retryCount,omitempty"`
 }
 
 // +kubebuilder:object:root=true

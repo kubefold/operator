@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -24,9 +25,17 @@ import (
 	datav1 "github.com/kubefold/operator/api/v1"
 )
 
+const (
+	ProteinConformationPredictionFinalizer = "proteinconformationprediction.data.kubefold.io/finalizer"
+	DefaultStorageClass                    = "fsx-sc"
+	DefaultJobTimeout                      = 24 * time.Hour
+	MaxRetries                             = 3
+)
+
 type ProteinConformationPredictionReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=data.kubefold.io,resources=proteinconformationpredictions,verbs=get;list;watch;create;update;patch;delete
@@ -48,6 +57,42 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 		return ctrl.Result{}, err
 	}
 
+	if !pred.ObjectMeta.DeletionTimestamp.IsZero() {
+		if controllerutil.ContainsFinalizer(pred, ProteinConformationPredictionFinalizer) {
+			if err := r.cleanupResources(ctx, pred); err != nil {
+				log.Error(err, "Failed to clean up resources")
+				return ctrl.Result{}, err
+			}
+
+			controllerutil.RemoveFinalizer(pred, ProteinConformationPredictionFinalizer)
+			if err := r.Update(ctx, pred); err != nil {
+				log.Error(err, "Failed to remove finalizer")
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if !controllerutil.ContainsFinalizer(pred, ProteinConformationPredictionFinalizer) {
+		controllerutil.AddFinalizer(pred, ProteinConformationPredictionFinalizer)
+		if err := r.Update(ctx, pred); err != nil {
+			log.Error(err, "Failed to add finalizer")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	if err := r.validateSpec(pred); err != nil {
+		log.Error(err, "Invalid spec")
+		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+		pred.Status.Error = err.Error()
+		if err := r.Status().Update(ctx, pred); err != nil {
+			log.Error(err, "Failed to update status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	if pred.Status.Phase != datav1.ProteinConformationPredictionStatusPhaseFailed &&
 		pred.Status.Phase != datav1.ProteinConformationPredictionStatusPhaseCompleted {
 
@@ -56,8 +101,22 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 		err := r.Get(ctx, types.NamespacedName{Name: searchJobName, Namespace: pred.Namespace}, searchJob)
 		if err == nil {
 			if searchJob.Status.Failed > 0 {
-				log.Info("Search job failed, updating status", "Job", searchJobName)
+				if pred.Status.RetryCount < MaxRetries {
+					pred.Status.RetryCount++
+					log.Info("Search job failed, retrying", "Job", searchJobName, "RetryCount", pred.Status.RetryCount)
+					if err := r.Status().Update(ctx, pred); err != nil {
+						log.Error(err, "Failed to update retry count")
+						return ctrl.Result{}, err
+					}
+					if err := r.Delete(ctx, searchJob); err != nil {
+						log.Error(err, "Failed to delete failed search job")
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{Requeue: true}, nil
+				}
+				log.Info("Search job failed after max retries", "Job", searchJobName)
 				pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+				pred.Status.Error = "Search job failed after max retries"
 				if err := r.Status().Update(ctx, pred); err != nil {
 					log.Error(err, "Failed to update ProteinConformationPrediction status")
 					return ctrl.Result{}, err
@@ -72,8 +131,22 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 			err := r.Get(ctx, types.NamespacedName{Name: predJobName, Namespace: pred.Namespace}, predJob)
 			if err == nil {
 				if predJob.Status.Failed > 0 {
-					log.Info("Prediction job failed, updating status", "Job", predJobName)
+					if pred.Status.RetryCount < MaxRetries {
+						pred.Status.RetryCount++
+						log.Info("Prediction job failed, retrying", "Job", predJobName, "RetryCount", pred.Status.RetryCount)
+						if err := r.Status().Update(ctx, pred); err != nil {
+							log.Error(err, "Failed to update retry count")
+							return ctrl.Result{}, err
+						}
+						if err := r.Delete(ctx, predJob); err != nil {
+							log.Error(err, "Failed to delete failed prediction job")
+							return ctrl.Result{}, err
+						}
+						return ctrl.Result{Requeue: true}, nil
+					}
+					log.Info("Prediction job failed after max retries", "Job", predJobName)
 					pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+					pred.Status.Error = "Prediction job failed after max retries"
 					if err := r.Status().Update(ctx, pred); err != nil {
 						log.Error(err, "Failed to update ProteinConformationPrediction status")
 						return ctrl.Result{}, err
@@ -89,8 +162,22 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 			err := r.Get(ctx, types.NamespacedName{Name: uploadJobName, Namespace: pred.Namespace}, uploadJob)
 			if err == nil {
 				if uploadJob.Status.Failed > 0 {
-					log.Info("Upload job failed, updating status", "Job", uploadJobName)
+					if pred.Status.RetryCount < MaxRetries {
+						pred.Status.RetryCount++
+						log.Info("Upload job failed, retrying", "Job", uploadJobName, "RetryCount", pred.Status.RetryCount)
+						if err := r.Status().Update(ctx, pred); err != nil {
+							log.Error(err, "Failed to update retry count")
+							return ctrl.Result{}, err
+						}
+						if err := r.Delete(ctx, uploadJob); err != nil {
+							log.Error(err, "Failed to delete failed upload job")
+							return ctrl.Result{}, err
+						}
+						return ctrl.Result{Requeue: true}, nil
+					}
+					log.Info("Upload job failed after max retries", "Job", uploadJobName)
 					pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+					pred.Status.Error = "Upload job failed after max retries"
 					if err := r.Status().Update(ctx, pred); err != nil {
 						log.Error(err, "Failed to update ProteinConformationPrediction status")
 						return ctrl.Result{}, err
@@ -104,6 +191,7 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 	if pred.Status.Phase == "" {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseNotStarted
 		pred.Status.SequencePrefix = pred.Spec.Protein.Sequence[:10] + "..."
+		pred.Status.RetryCount = 0
 		if err := r.Status().Update(ctx, pred); err != nil {
 			log.Error(err, "Failed to update ProteinConformationPrediction status")
 			return ctrl.Result{}, err
@@ -136,9 +224,11 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Waiting for ProteinDatabase to be created", "Database", pred.Spec.Database)
+			r.Recorder.Event(pred, corev1.EventTypeNormal, "DatabaseNotFound", fmt.Sprintf("Waiting for ProteinDatabase %s to be created", pred.Spec.Database))
 			return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 		}
 		log.Error(err, "Failed to get ProteinDatabase")
+		r.Recorder.Event(pred, corev1.EventTypeWarning, "DatabaseError", fmt.Sprintf("Failed to get ProteinDatabase: %v", err))
 		return ctrl.Result{}, err
 	}
 
@@ -150,16 +240,20 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 			pvc = r.newPVC(pred, pvcName)
 			if err := controllerutil.SetControllerReference(pred, pvc, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for PVC")
+				r.Recorder.Event(pred, corev1.EventTypeWarning, "PVCReferenceError", fmt.Sprintf("Failed to set controller reference for PVC: %v", err))
 				return ctrl.Result{}, err
 			}
 			if err := r.Create(ctx, pvc); err != nil {
 				log.Error(err, "Failed to create PVC")
+				r.Recorder.Event(pred, corev1.EventTypeWarning, "PVCCreationError", fmt.Sprintf("Failed to create PVC: %v", err))
 				return ctrl.Result{}, err
 			}
 			log.Info("Created PVC", "Name", pvcName)
+			r.Recorder.Event(pred, corev1.EventTypeNormal, "PVCCreated", fmt.Sprintf("Created PVC %s", pvcName))
 			return ctrl.Result{Requeue: true}, nil
 		}
 		log.Error(err, "Failed to get PVC")
+		r.Recorder.Event(pred, corev1.EventTypeWarning, "PVCError", fmt.Sprintf("Failed to get PVC: %v", err))
 		return ctrl.Result{}, err
 	}
 
@@ -171,29 +265,35 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 			encodedInput, err := r.prepareFoldInput(pred, false)
 			if err != nil {
 				log.Error(err, "Failed to prepare FoldInput")
+				r.Recorder.Event(pred, corev1.EventTypeWarning, "InputError", fmt.Sprintf("Failed to prepare FoldInput: %v", err))
 				return ctrl.Result{}, err
 			}
 
 			job = r.newSearchJob(pred, jobName, pvcName, encodedInput)
 			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for search job")
+				r.Recorder.Event(pred, corev1.EventTypeWarning, "JobReferenceError", fmt.Sprintf("Failed to set controller reference for search job: %v", err))
 				return ctrl.Result{}, err
 			}
 			if err := r.Create(ctx, job); err != nil {
 				log.Error(err, "Failed to create search job")
+				r.Recorder.Event(pred, corev1.EventTypeWarning, "JobCreationError", fmt.Sprintf("Failed to create search job: %v", err))
 				return ctrl.Result{}, err
 			}
 
 			pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseAligning
 			if err := r.Status().Update(ctx, pred); err != nil {
 				log.Error(err, "Failed to update ProteinConformationPrediction status")
+				r.Recorder.Event(pred, corev1.EventTypeWarning, "StatusUpdateError", fmt.Sprintf("Failed to update status: %v", err))
 				return ctrl.Result{}, err
 			}
 
 			log.Info("Created search job and updated status", "Name", jobName)
+			r.Recorder.Event(pred, corev1.EventTypeNormal, "JobCreated", fmt.Sprintf("Created search job %s", jobName))
 			return ctrl.Result{Requeue: true}, nil
 		}
 		log.Error(err, "Failed to get search job")
+		r.Recorder.Event(pred, corev1.EventTypeWarning, "JobError", fmt.Sprintf("Failed to get search job: %v", err))
 		return ctrl.Result{}, err
 	}
 
@@ -209,6 +309,16 @@ func (r *ProteinConformationPredictionReconciler) handleAligning(ctx context.Con
 	if err != nil {
 		log.Error(err, "Failed to get search job")
 		return ctrl.Result{}, err
+	}
+
+	if r.checkJobTimeout(ctx, job) {
+		log.Info("Search job timed out", "Job", jobName)
+		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+		if err := r.Status().Update(ctx, pred); err != nil {
+			log.Error(err, "Failed to update ProteinConformationPrediction status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	if job.Status.Succeeded > 0 {
@@ -265,6 +375,16 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 		return ctrl.Result{}, err
 	}
 
+	if r.checkJobTimeout(ctx, job) {
+		log.Info("Prediction job timed out", "Job", jobName)
+		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+		if err := r.Status().Update(ctx, pred); err != nil {
+			log.Error(err, "Failed to update ProteinConformationPrediction status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	if job.Status.Succeeded > 0 {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseUploadingArtifacts
 		if err := r.Status().Update(ctx, pred); err != nil {
@@ -313,10 +433,25 @@ func (r *ProteinConformationPredictionReconciler) handleUploadingArtifacts(ctx c
 		return ctrl.Result{}, err
 	}
 
+	if r.checkJobTimeout(ctx, job) {
+		log.Info("Upload job timed out", "Job", jobName)
+		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
+		if err := r.Status().Update(ctx, pred); err != nil {
+			log.Error(err, "Failed to update ProteinConformationPrediction status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	if job.Status.Succeeded > 0 {
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseCompleted
 		if err := r.Status().Update(ctx, pred); err != nil {
 			log.Error(err, "Failed to update ProteinConformationPrediction status")
+			return ctrl.Result{}, err
+		}
+
+		if err := r.cleanupCompletedJobs(ctx, pred); err != nil {
+			log.Error(err, "Failed to cleanup completed jobs")
 			return ctrl.Result{}, err
 		}
 
@@ -325,7 +460,7 @@ func (r *ProteinConformationPredictionReconciler) handleUploadingArtifacts(ctx c
 		err := r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: pred.Namespace}, pvc)
 		if err == nil {
 			if err := r.Delete(ctx, pvc); err != nil {
-				log.Error(err, "Failed to delete PVC")
+				log.Error(err, "Failed to delete PVC", "Name", pvcName)
 				return ctrl.Result{}, err
 			}
 			log.Info("Deleted PVC", "Name", pvcName)
@@ -349,9 +484,14 @@ func (r *ProteinConformationPredictionReconciler) handleUploadingArtifacts(ctx c
 }
 
 func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinConformationPrediction, pvcName string) *corev1.PersistentVolumeClaim {
-	storageClass := "fsx-sc"
+	storageClass := DefaultStorageClass
+	if pred.Spec.Model.Volume.StorageClassName != nil && *pred.Spec.Model.Volume.StorageClassName != "" {
+		storageClass = *pred.Spec.Model.Volume.StorageClassName
+	} else if pred.Spec.StorageClass != "" {
+		storageClass = pred.Spec.StorageClass
+	}
 
-	return &corev1.PersistentVolumeClaim{
+	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
 			Namespace: pred.Namespace,
@@ -373,6 +513,12 @@ func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinCon
 			StorageClassName: &storageClass,
 		},
 	}
+
+	if pred.Spec.Model.Volume.Selector != nil {
+		pvc.Spec.Selector = pred.Spec.Model.Volume.Selector
+	}
+
+	return pvc
 }
 
 func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.ProteinConformationPrediction, prediction bool) (string, error) {
@@ -437,11 +583,33 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &[]bool{true}[0],
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
 					InitContainers: []corev1.Container{
 						{
 							Name:            "input-placement",
 							Image:           ManagerImage,
 							ImagePullPolicy: ManagerImagePullPolicy,
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+							},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -473,7 +641,23 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 							Name:            "search",
 							Image:           AlphafoldImage,
 							ImagePullPolicy: AlphafoldImagePullPolicy,
-							Command:         []string{"python"},
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("1"),
+									corev1.ResourceMemory: resource.MustParse("2Gi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("2"),
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+							Command: []string{"python"},
 							Args: []string{
 								"run_alphafold.py",
 								"--json_path=/data/af_input/fold_input.json",
@@ -517,7 +701,6 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 		},
 	}
 
-	// Add node selector if specified
 	if pred.Spec.Job.SearchNodeSelector.NodeSelectorTerms != nil {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{}
 		for _, term := range pred.Spec.Job.SearchNodeSelector.NodeSelectorTerms {
@@ -533,7 +716,6 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 }
 
 func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job {
-
 	backoffLimit := int32(2)
 
 	job := &batchv1.Job{
@@ -564,11 +746,33 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &[]bool{true}[0],
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
 					InitContainers: []corev1.Container{
 						{
 							Name:            "input-placement",
 							Image:           ManagerImage,
 							ImagePullPolicy: ManagerImagePullPolicy,
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+							},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -598,12 +802,28 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							Name:            "weights-placement",
 							Image:           ManagerImage,
 							ImagePullPolicy: ManagerImagePullPolicy,
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+							},
 							Command: []string{
 								"sh",
 							},
 							Args: []string{
 								"-c",
-								fmt.Sprintf("mkdir -p /data/models; wget -O /data/models/af3.bin.zst %s; unzstd /data/models/af3.bin.zst", pred.Spec.Model.Weights.HTTP),
+								fmt.Sprintf("mkdir -p /data/models; wget --tries=3 --timeout=30 -O /data/models/af3.bin.zst %s && unzstd /data/models/af3.bin.zst || (echo 'Failed to download or extract weights' && exit 1)", pred.Spec.Model.Weights.HTTP),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -622,7 +842,25 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							Name:            "predict",
 							Image:           AlphafoldImage,
 							ImagePullPolicy: AlphafoldImagePullPolicy,
-							Command:         []string{"python"},
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("4"),
+									corev1.ResourceMemory: resource.MustParse("16Gi"),
+									"nvidia.com/gpu":      resource.MustParse("1"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("8"),
+									corev1.ResourceMemory: resource.MustParse("32Gi"),
+									"nvidia.com/gpu":      resource.MustParse("1"),
+								},
+							},
+							Command: []string{"python"},
 							Args: []string{
 								"run_alphafold.py",
 								"--json_path=/data/af_input/fold_input.json",
@@ -630,14 +868,6 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 								"--model_dir=/data/models",
 								"--db_dir=/public_databases",
 								"--run_data_pipeline=false",
-							},
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									"nvidia.com/gpu": resource.MustParse("1"),
-								},
-								Requests: corev1.ResourceList{
-									"nvidia.com/gpu": resource.MustParse("1"),
-								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -727,11 +957,33 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &[]bool{true}[0],
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "upload",
 							Image:           ManagerImage,
 							ImagePullPolicy: ManagerImagePullPolicy,
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+							},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -749,6 +1001,28 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 									Name:  "AWS_REGION",
 									Value: pred.Spec.Destination.S3.Region,
 								},
+								{
+									Name: "AWS_ACCESS_KEY_ID",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "aws-credentials",
+											},
+											Key: "access-key-id",
+										},
+									},
+								},
+								{
+									Name: "AWS_SECRET_ACCESS_KEY",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "aws-credentials",
+											},
+											Key: "secret-access-key",
+										},
+									},
+								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -761,6 +1035,22 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 							Name:            "notify",
 							Image:           ManagerImage,
 							ImagePullPolicy: ManagerImagePullPolicy,
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+							},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -781,6 +1071,28 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 								{
 									Name:  "AWS_REGION",
 									Value: pred.Spec.Destination.S3.Region,
+								},
+								{
+									Name: "AWS_ACCESS_KEY_ID",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "aws-credentials",
+											},
+											Key: "access-key-id",
+										},
+									},
+								},
+								{
+									Name: "AWS_SECRET_ACCESS_KEY",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "aws-credentials",
+											},
+											Key: "secret-access-key",
+										},
+									},
 								},
 							},
 						},
@@ -803,7 +1115,109 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 	return job
 }
 
+func (r *ProteinConformationPredictionReconciler) cleanupResources(ctx context.Context, pred *datav1.ProteinConformationPrediction) error {
+	log := logf.FromContext(ctx)
+
+	pvcName := fmt.Sprintf("%s-data", pred.Name)
+	pvc := &corev1.PersistentVolumeClaim{}
+	err := r.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: pred.Namespace}, pvc)
+	if err == nil {
+		if err := r.Delete(ctx, pvc); err != nil {
+			log.Error(err, "Failed to delete PVC", "Name", pvcName)
+			return err
+		}
+	}
+
+	jobNames := []string{
+		fmt.Sprintf("%s-search", pred.Name),
+		fmt.Sprintf("%s-predict", pred.Name),
+		fmt.Sprintf("%s-upload", pred.Name),
+	}
+
+	for _, jobName := range jobNames {
+		job := &batchv1.Job{}
+		err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
+		if err == nil {
+			if err := r.Delete(ctx, job); err != nil {
+				log.Error(err, "Failed to delete job", "Name", jobName)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *ProteinConformationPredictionReconciler) validateSpec(pred *datav1.ProteinConformationPrediction) error {
+	if pred.Spec.Protein.Sequence == "" {
+		return fmt.Errorf("protein sequence cannot be empty")
+	}
+	if pred.Spec.Database == "" {
+		return fmt.Errorf("database reference cannot be empty")
+	}
+	if pred.Spec.Destination.S3.Bucket == "" {
+		return fmt.Errorf("destination S3 bucket cannot be empty")
+	}
+	if pred.Spec.Destination.S3.Region == "" {
+		return fmt.Errorf("destination S3 region cannot be empty")
+	}
+	if pred.Spec.Model.Weights.HTTP == "" {
+		return fmt.Errorf("model weights HTTP URL cannot be empty")
+	}
+	return nil
+}
+
+func (r *ProteinConformationPredictionReconciler) validateDatabasePVC(ctx context.Context, pred *datav1.ProteinConformationPrediction) error {
+	dbPVCName := fmt.Sprintf("%s-data", pred.Spec.Database)
+	dbPVC := &corev1.PersistentVolumeClaim{}
+	err := r.Get(ctx, types.NamespacedName{Name: dbPVCName, Namespace: pred.Namespace}, dbPVC)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return fmt.Errorf("database PVC %s not found", dbPVCName)
+		}
+		return fmt.Errorf("failed to get database PVC: %w", err)
+	}
+	return nil
+}
+
+func (r *ProteinConformationPredictionReconciler) cleanupCompletedJobs(ctx context.Context, pred *datav1.ProteinConformationPrediction) error {
+	log := logf.FromContext(ctx)
+
+	jobNames := []string{
+		fmt.Sprintf("%s-search", pred.Name),
+		fmt.Sprintf("%s-predict", pred.Name),
+		fmt.Sprintf("%s-upload", pred.Name),
+	}
+
+	for _, jobName := range jobNames {
+		job := &batchv1.Job{}
+		err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
+		if err == nil && job.Status.Succeeded > 0 {
+			if err := r.Delete(ctx, job); err != nil {
+				log.Error(err, "Failed to delete completed job", "Name", jobName)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *ProteinConformationPredictionReconciler) checkJobTimeout(ctx context.Context, job *batchv1.Job) bool {
+	if job.Status.StartTime == nil {
+		return false
+	}
+
+	timeout := DefaultJobTimeout
+	if job.Spec.ActiveDeadlineSeconds != nil {
+		timeout = time.Duration(*job.Spec.ActiveDeadlineSeconds) * time.Second
+	}
+
+	return time.Since(job.Status.StartTime.Time) > timeout
+}
+
 func (r *ProteinConformationPredictionReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Recorder = mgr.GetEventRecorderFor("proteinconformationprediction-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&datav1.ProteinConformationPrediction{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
