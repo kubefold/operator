@@ -24,4 +24,28 @@ rules:
   resources:
   - proteindatabases/status
   verbs:
-  - get
+  - '*'
+- apiGroups:
+  - core
+  resources:
+  - persistentvolumeclaims
+  verbs:
+  - '*'
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - '*'
+- apiGroups:
+  - core
+  resources:
+  - pods
+  verbs:
+  - '*'
+- apiGroups:
+  - core
+  resources:
+  - pods/log
+  verbs:
+  - '*'
