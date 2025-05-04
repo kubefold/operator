@@ -22,6 +22,9 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the {{ .ProjectName }} itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- proteinconformationprediction_admin_role.yaml
+- proteinconformationprediction_editor_role.yaml
+- proteinconformationprediction_viewer_role.yaml
 - proteindatabase_admin_role.yaml
 - proteindatabase_editor_role.yaml
 - proteindatabase_viewer_role.yaml

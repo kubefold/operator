@@ -1,8 +1,9 @@
 package util
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Int64Ptr(i int64) *int64 {

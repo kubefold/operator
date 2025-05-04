@@ -1,0 +1,27 @@
+apiVersion: data.kubefold.io/v1
+kind: ProteinConformationPrediction
+metadata:
+  labels:
+    app.kubernetes.io/name: kubefold
+    app.kubernetes.io/managed-by: kustomize
+  name: proteinconformationprediction-sample
+spec:
+  database: proteindatabase-sample
+  protein:
+    id: [ 'A','B' ]
+    sequence: GMRESYANENQFGFKTINSDIHKIVIVGGYGKLGGLFARYLRASGYPISILDREDWAVAESILANADVVIVSVPINLTLETIERLKPYLTENMLLADLTSVKREPLAKMLEVHTGAVLGLHPMFGADIASMAKQVVVRCDGRFPERYEWLLEQIQIWGAKIYQTNATEHDHNMTYIQALRHFSTFANGLHLSKQPINLANLLALSSPIYRLELAMIGRLFAQDAELYADIIMDKSENLAVIETLKQTYDEALTFFENNDRQGFIDAFHKVRDWFGDYSEQFLKESRQLLQQANDLKQG
+  model:
+    volume:
+      storageClassName: fsx-sc
+    weights:
+      http: https://d1gtajdxfldxes.cloudfront.net/af3.bin.zst
+    seeds:
+      - 1
+  destination:
+    s3:
+      bucket: kubefold-artifacts-sample
+      region: eu-central-1
+  notify:
+    region: eu-central-1
+    sms:
+      - "+48505506682"

@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/data.kubefold.io_proteindatabases.yaml
+- bases/data.kubefold.io_proteinconformationpredictions.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
