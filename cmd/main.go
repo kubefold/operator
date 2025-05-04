@@ -186,7 +186,7 @@ func main() {
 		WebhookServer:           webhookServer,
 		HealthProbeBindAddress:  probeAddr,
 		LeaderElection:          enableLeaderElection,
-		LeaderElectionNamespace: "kube-system",
+		LeaderElectionNamespace: "kubefold-system",
 		LeaderElectionID:        "e7aef7c9.kubefold.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
