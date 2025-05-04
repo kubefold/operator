@@ -32,6 +32,7 @@ rules:
   - data.kubefold.io
   resources:
   - proteindatabases
+  - proteinconformationpredictions
   verbs:
   - create
   - delete
@@ -44,12 +45,14 @@ rules:
   - data.kubefold.io
   resources:
   - proteindatabases/finalizers
+  - proteinconformationpredictions/finalizers
   verbs:
   - update
 - apiGroups:
   - data.kubefold.io
   resources:
   - proteindatabases/status
+  - proteinconformationpredictions/status
   verbs:
   - get
   - patch
