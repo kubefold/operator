@@ -43,7 +43,8 @@ type ProteinConformationPredictionReconciler struct {
 // +kubebuilder:rbac:groups=data.kubefold.io,resources=proteinconformationpredictions/finalizers,verbs=update
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
-
+//
+//nolint:gocyclo
 func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
@@ -57,7 +58,7 @@ func (r *ProteinConformationPredictionReconciler) Reconcile(ctx context.Context,
 		return ctrl.Result{}, err
 	}
 
-	if !pred.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !pred.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(pred, ProteinConformationPredictionFinalizer) {
 			if err := r.cleanupResources(ctx, pred); err != nil {
 				log.Error(err, "Failed to clean up resources")
@@ -311,7 +312,7 @@ func (r *ProteinConformationPredictionReconciler) handleAligning(ctx context.Con
 		return ctrl.Result{}, err
 	}
 
-	if r.checkJobTimeout(ctx, job) {
+	if r.checkJobTimeout(job) {
 		log.Info("Search job timed out", "Job", jobName)
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
 		if err := r.Status().Update(ctx, pred); err != nil {
@@ -375,7 +376,7 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 		return ctrl.Result{}, err
 	}
 
-	if r.checkJobTimeout(ctx, job) {
+	if r.checkJobTimeout(job) {
 		log.Info("Prediction job timed out", "Job", jobName)
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
 		if err := r.Status().Update(ctx, pred); err != nil {
@@ -433,7 +434,7 @@ func (r *ProteinConformationPredictionReconciler) handleUploadingArtifacts(ctx c
 		return ctrl.Result{}, err
 	}
 
-	if r.checkJobTimeout(ctx, job) {
+	if r.checkJobTimeout(job) {
 		log.Info("Upload job timed out", "Job", jobName)
 		pred.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
 		if err := r.Status().Update(ctx, pred); err != nil {
@@ -1167,19 +1168,6 @@ func (r *ProteinConformationPredictionReconciler) validateSpec(pred *datav1.Prot
 	return nil
 }
 
-func (r *ProteinConformationPredictionReconciler) validateDatabasePVC(ctx context.Context, pred *datav1.ProteinConformationPrediction) error {
-	dbPVCName := fmt.Sprintf("%s-data", pred.Spec.Database)
-	dbPVC := &corev1.PersistentVolumeClaim{}
-	err := r.Get(ctx, types.NamespacedName{Name: dbPVCName, Namespace: pred.Namespace}, dbPVC)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return fmt.Errorf("database PVC %s not found", dbPVCName)
-		}
-		return fmt.Errorf("failed to get database PVC: %w", err)
-	}
-	return nil
-}
-
 func (r *ProteinConformationPredictionReconciler) cleanupCompletedJobs(ctx context.Context, pred *datav1.ProteinConformationPrediction) error {
 	log := logf.FromContext(ctx)
 
@@ -1203,7 +1191,7 @@ func (r *ProteinConformationPredictionReconciler) cleanupCompletedJobs(ctx conte
 	return nil
 }
 
-func (r *ProteinConformationPredictionReconciler) checkJobTimeout(ctx context.Context, job *batchv1.Job) bool {
+func (r *ProteinConformationPredictionReconciler) checkJobTimeout(job *batchv1.Job) bool {
 	if job.Status.StartTime == nil {
 		return false
 	}

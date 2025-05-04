@@ -215,7 +215,11 @@ func main() {
 
 	// Create and start log observer
 	logObserver := observer.NewLogObserver(mgr.GetClient(), kubeClient)
-	mgr.Add(logObserver)
+	err = mgr.Add(logObserver)
+	if err != nil {
+		setupLog.Error(err, "unable to register log observer")
+		os.Exit(1)
+	}
 
 	if err = (&controller.ProteinDatabaseReconciler{
 		Client: mgr.GetClient(),

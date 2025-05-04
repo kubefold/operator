@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kubefold/operator/internal/util"
 	"io"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
+
+	"github.com/kubefold/operator/internal/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	downloaderTypes "github.com/kubefold/downloader/pkg/types"
 	datav1 "github.com/kubefold/operator/api/v1"
@@ -137,6 +138,7 @@ func (o *logObserver) findDownloadPods(ctx context.Context, pd *datav1.ProteinDa
 	return podList.Items, nil
 }
 
+//nolint:gocyclo
 func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, proteinDatabaseStatus *datav1.ProteinDatabaseStatus) error {
 	podLogOpts := corev1.PodLogOptions{
 		Container: "downloader",
@@ -149,6 +151,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 	if err != nil {
 		return fmt.Errorf("failed to open pod log stream: %w", err)
 	}
+	//nolint:errcheck
 	defer podLogs.Close()
 
 	reader := bufio.NewReader(podLogs)
@@ -188,7 +191,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetRFam:
 				if proteinDatabaseStatus.Datasets.RFam.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.RFam.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.RFam.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.RFam.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -200,7 +203,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetBFD:
 				if proteinDatabaseStatus.Datasets.BFD.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.BFD.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.BFD.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.BFD.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -212,7 +215,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetUniProt:
 				if proteinDatabaseStatus.Datasets.UniProt.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.UniProt.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.UniProt.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.UniProt.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -224,7 +227,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetUniRef90:
 				if proteinDatabaseStatus.Datasets.UniRef90.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.UniRef90.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.UniRef90.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.UniRef90.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -236,7 +239,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetRNACentral:
 				if proteinDatabaseStatus.Datasets.RNACentral.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.RNACentral.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.RNACentral.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.RNACentral.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -248,7 +251,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetPDB:
 				if proteinDatabaseStatus.Datasets.PDB.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.PDB.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.PDB.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.PDB.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -260,7 +263,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetPDBSeqReq:
 				if proteinDatabaseStatus.Datasets.PDBSeqReq.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.PDBSeqReq.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.PDBSeqReq.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.PDBSeqReq.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -272,7 +275,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetNT:
 				if proteinDatabaseStatus.Datasets.NT.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.NT.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.NT.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.NT.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {
@@ -284,7 +287,7 @@ func (o *logObserver) processPodsLogs(ctx context.Context, pod corev1.Pod, prote
 			case downloaderTypes.DatasetMGYClusters:
 				if proteinDatabaseStatus.Datasets.MGYClusters.LastUpdate != nil {
 					progress.Delta = progress.Size - proteinDatabaseStatus.Datasets.MGYClusters.Size
-					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Time.Sub(proteinDatabaseStatus.Datasets.MGYClusters.LastUpdate.Time)}
+					progress.DeltaDuration = &metav1.Duration{Duration: progress.LastUpdate.Sub(proteinDatabaseStatus.Datasets.MGYClusters.LastUpdate.Time)}
 					progress.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration))
 				}
 				if progress.DownloadStatus == datav1.ProteinDatabaseDownloadStatusCompleted {

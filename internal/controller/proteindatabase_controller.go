@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -44,7 +45,7 @@ func (r *ProteinDatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		r.finalizerHandler = &FinalizerHandler{client: r.Client, scheme: r.Scheme}
 	}
 
-	if !pd.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !pd.DeletionTimestamp.IsZero() {
 		return r.finalizerHandler.handleDeletion(ctx, pd)
 	}
 
@@ -73,7 +74,6 @@ func (r *ProteinDatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	log.Info("Reconciliation completed successfully")
-	//return ctrl.Result{Requeue: true, RequeueAfter: ReconcileInterval}, nil
 	return ctrl.Result{}, nil
 }
 
