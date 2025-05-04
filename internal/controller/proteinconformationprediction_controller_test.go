@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	datav1 "github.com/kubefold/operator/api/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("ProteinConformationPrediction Controller", func() {
@@ -51,7 +52,52 @@ var _ = Describe("ProteinConformationPrediction Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: datav1.ProteinConformationPredictionSpec{
+						Protein: datav1.ProteinConformationPredictionProtein{
+							ID:       []string{"test-id"},
+							Sequence: "TESTSEQUENCE",
+						},
+						Database: "test-database",
+						Destination: datav1.ProteinConformationPredictionDestination{
+							S3: datav1.ProteinConformationPredictionDestinationS3{
+								Bucket: "test-bucket",
+								Region: "test-region",
+							},
+						},
+						Model: datav1.ProteinConformationPredictionModel{
+							Weights: datav1.ProteinConformationPredictionModelWeights{
+								HTTP: "http://test-weights",
+							},
+						},
+						Job: datav1.ProteinConformationPredictionJob{
+							SearchNodeSelector: v1.NodeSelector{
+								NodeSelectorTerms: []v1.NodeSelectorTerm{
+									{
+										MatchExpressions: []v1.NodeSelectorRequirement{
+											{
+												Key:      "test-key",
+												Operator: v1.NodeSelectorOpIn,
+												Values:   []string{"test-value"},
+											},
+										},
+									},
+								},
+							},
+							PredictionNodeSelector: v1.NodeSelector{
+								NodeSelectorTerms: []v1.NodeSelectorTerm{
+									{
+										MatchExpressions: []v1.NodeSelectorRequirement{
+											{
+												Key:      "test-key",
+												Operator: v1.NodeSelectorOpIn,
+												Values:   []string{"test-value"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
