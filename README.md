@@ -82,3 +82,29 @@ To uninstall the operator:
 kubectl delete -f https://raw.githubusercontent.com/kubefold/operator/main/dist/install.yaml
 ```
 
+## ☁️ Running on AWS EKS
+
+This project provides resources for easy deployment on Amazon EKS, including GPU and FSx Lustre support for high-performance workloads.
+
+- `eks/cluster.yaml`: Example EKS cluster configuration (with CPU and GPU node groups, IAM policies, and VPC setup) for use with `eksctl`.
+- `eks/fsx.storageclass.k8s.yaml`: StorageClass for FSx for Lustre, enabling fast, shared storage for protein data and models.
+- `eks/sample-lustre-volume.k8s.yaml`: Sample PersistentVolumeClaim using the FSx StorageClass.
+- `up.sh`: Automated script to provision the EKS cluster, install the FSx CSI driver, set up storage, deploy Kubefold, and apply a sample resource. Run this script for a one-command setup (requires AWS CLI, eksctl, and kubectl configured).
+
+**Note:**
+- The provided EKS configuration includes a GPU node group using `g5.xlarge` instances. You must request a quota increase for g5 instances in your AWS region before running the setup.
+
+**Quick start:**
+(Recommended) Run the automated setup script:
+```sh
+# Automatically:
+# - creates EKS cluster with GPU nodegroup
+# - installs AWS FSx CSI Driver for automated FSx for Lustre volume provisioning
+# - create fsx-sc storage class
+# - installs kubefold controller
+# - deploys sample ProteinDatabase
+./up.sh
+```
+
+These resources help you get started with scalable, cloud-native protein prediction workflows on AWS.
+
