@@ -17,9 +17,14 @@ managedNodeGroups:
         ebs: true
         fsx: true
         efs: true
-      # attachPolicyARNs:
-      #   - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-      #   - "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonFSxFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
   - name: ng-gpu
     instanceType: g5.xlarge
     desiredCapacity: 1
@@ -32,9 +37,14 @@ managedNodeGroups:
         ebs: true
         fsx: true
         efs: true
-      # attachPolicyARNs:
-      #   - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-      #   - "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonFSxFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       
 iam:
   withOIDC: true

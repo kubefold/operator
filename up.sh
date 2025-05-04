@@ -8,6 +8,7 @@ kubectl config use-context arn:aws:eks:eu-central-1:"$ACCOUNT_ID":cluster/alphaf
 kubectl apply -k "github.com/kubernetes-sigs/aws-fsx-csi-driver/deploy/kubernetes/overlays/stable/?ref=release-1.3"
 kubectl apply -f eks/fsx.storageclass.k8s.yaml
 
-make install
+kubectl apply -f https://raw.githubusercontent.com/kubefold/operator/refs/heads/main/dist/install.yaml
 kubectl apply -f config/samples/data_v1_proteindatabase.yaml
-make run
+
+echo 'Done'
