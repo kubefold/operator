@@ -584,12 +584,12 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: &[]bool{true}[0],
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					//SecurityContext: &corev1.PodSecurityContext{
+					//	RunAsNonRoot: &[]bool{true}[0],
+					//	SeccompProfile: &corev1.SeccompProfile{
+					//		Type: corev1.SeccompProfileTypeRuntimeDefault,
+					//	},
+					//},
 					InitContainers: []corev1.Container{
 						{
 							Name:            "input-placement",
@@ -601,16 +601,16 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("200m"),
-									corev1.ResourceMemory: resource.MustParse("256Mi"),
-								},
-							},
+							//Resources: corev1.ResourceRequirements{
+							//	Requests: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("100m"),
+							//		corev1.ResourceMemory: resource.MustParse("128Mi"),
+							//	},
+							//	Limits: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("200m"),
+							//		corev1.ResourceMemory: resource.MustParse("256Mi"),
+							//	},
+							//},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -648,16 +648,16 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("1"),
-									corev1.ResourceMemory: resource.MustParse("2Gi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("2"),
-									corev1.ResourceMemory: resource.MustParse("4Gi"),
-								},
-							},
+							//Resources: corev1.ResourceRequirements{
+							//	Requests: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("1"),
+							//		corev1.ResourceMemory: resource.MustParse("2Gi"),
+							//	},
+							//	Limits: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("2"),
+							//		corev1.ResourceMemory: resource.MustParse("4Gi"),
+							//	},
+							//},
 							Command: []string{"python"},
 							Args: []string{
 								"run_alphafold.py",
@@ -747,12 +747,12 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: &[]bool{true}[0],
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					//SecurityContext: &corev1.PodSecurityContext{
+					//	RunAsNonRoot: &[]bool{true}[0],
+					//	SeccompProfile: &corev1.SeccompProfile{
+					//		Type: corev1.SeccompProfileTypeRuntimeDefault,
+					//	},
+					//},
 					InitContainers: []corev1.Container{
 						{
 							Name:            "input-placement",
@@ -764,16 +764,16 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("200m"),
-									corev1.ResourceMemory: resource.MustParse("256Mi"),
-								},
-							},
+							//Resources: corev1.ResourceRequirements{
+							//	Requests: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("100m"),
+							//		corev1.ResourceMemory: resource.MustParse("128Mi"),
+							//	},
+							//	Limits: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("200m"),
+							//		corev1.ResourceMemory: resource.MustParse("256Mi"),
+							//	},
+							//},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -809,16 +809,16 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("200m"),
-									corev1.ResourceMemory: resource.MustParse("256Mi"),
-								},
-							},
+							//Resources: corev1.ResourceRequirements{
+							//	Requests: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("100m"),
+							//		corev1.ResourceMemory: resource.MustParse("128Mi"),
+							//	},
+							//	Limits: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("200m"),
+							//		corev1.ResourceMemory: resource.MustParse("256Mi"),
+							//	},
+							//},
 							Command: []string{
 								"sh",
 							},
@@ -851,14 +851,14 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("4"),
-									corev1.ResourceMemory: resource.MustParse("16Gi"),
-									"nvidia.com/gpu":      resource.MustParse("1"),
+									//corev1.ResourceCPU:    resource.MustParse("4"),
+									//corev1.ResourceMemory: resource.MustParse("16Gi"),
+									"nvidia.com/gpu": resource.MustParse("1"),
 								},
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("8"),
-									corev1.ResourceMemory: resource.MustParse("32Gi"),
-									"nvidia.com/gpu":      resource.MustParse("1"),
+									//corev1.ResourceCPU:    resource.MustParse("8"),
+									//corev1.ResourceMemory: resource.MustParse("32Gi"),
+									"nvidia.com/gpu": resource.MustParse("1"),
 								},
 							},
 							Command: []string{"python"},
@@ -958,12 +958,12 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: &[]bool{true}[0],
-						SeccompProfile: &corev1.SeccompProfile{
-							Type: corev1.SeccompProfileTypeRuntimeDefault,
-						},
-					},
+					//SecurityContext: &corev1.PodSecurityContext{
+					//	RunAsNonRoot: &[]bool{true}[0],
+					//	SeccompProfile: &corev1.SeccompProfile{
+					//		Type: corev1.SeccompProfileTypeRuntimeDefault,
+					//	},
+					//},
 					Containers: []corev1.Container{
 						{
 							Name:            "upload",
@@ -975,16 +975,16 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("200m"),
-									corev1.ResourceMemory: resource.MustParse("256Mi"),
-								},
-							},
+							//Resources: corev1.ResourceRequirements{
+							//	Requests: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("100m"),
+							//		corev1.ResourceMemory: resource.MustParse("128Mi"),
+							//	},
+							//	Limits: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("200m"),
+							//		corev1.ResourceMemory: resource.MustParse("256Mi"),
+							//	},
+							//},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -1001,28 +1001,6 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 								{
 									Name:  "AWS_REGION",
 									Value: pred.Spec.Destination.S3.Region,
-								},
-								{
-									Name: "AWS_ACCESS_KEY_ID",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "aws-credentials",
-											},
-											Key: "access-key-id",
-										},
-									},
-								},
-								{
-									Name: "AWS_SECRET_ACCESS_KEY",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "aws-credentials",
-											},
-											Key: "secret-access-key",
-										},
-									},
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -1042,16 +1020,16 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("200m"),
-									corev1.ResourceMemory: resource.MustParse("256Mi"),
-								},
-							},
+							//Resources: corev1.ResourceRequirements{
+							//	Requests: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("100m"),
+							//		corev1.ResourceMemory: resource.MustParse("128Mi"),
+							//	},
+							//	Limits: corev1.ResourceList{
+							//		corev1.ResourceCPU:    resource.MustParse("200m"),
+							//		corev1.ResourceMemory: resource.MustParse("256Mi"),
+							//	},
+							//},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -1072,28 +1050,6 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 								{
 									Name:  "AWS_REGION",
 									Value: pred.Spec.Destination.S3.Region,
-								},
-								{
-									Name: "AWS_ACCESS_KEY_ID",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "aws-credentials",
-											},
-											Key: "access-key-id",
-										},
-									},
-								},
-								{
-									Name: "AWS_SECRET_ACCESS_KEY",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "aws-credentials",
-											},
-											Key: "secret-access-key",
-										},
-									},
 								},
 							},
 						},
