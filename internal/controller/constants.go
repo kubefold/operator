@@ -18,6 +18,6 @@ const (
 	ManagerImage           = "ghcr.io/kubefold/manager"
 	ManagerImagePullPolicy = corev1.PullAlways
 
-	AlphafoldImage           = "public.ecr.aws/m5b1c9c0/alphafold3:latest"
+	AlphafoldImage           = "public.ecr.aws/k3x1v3b7/alphafold3:latest"
 	AlphafoldImagePullPolicy = corev1.PullAlways
 )

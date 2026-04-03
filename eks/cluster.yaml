@@ -11,7 +11,7 @@ managedNodeGroups:
     ssh:
       allow: true
     subnets:
-      - "subnet-038b10f6f4ac5aacd"
+      - "subnet-0feb9e8e7b8b09c18"
     iam:
       withAddonPolicies:
         ebs: true
@@ -31,7 +31,7 @@ managedNodeGroups:
     ssh:
       allow: true
     subnets:
-      - "subnet-038b10f6f4ac5aacd"
+      - "subnet-0feb9e8e7b8b09c18"
     iam:
       withAddonPolicies:
         ebs: true
@@ -57,13 +57,13 @@ iam:
         - "arn:aws:iam::aws:policy/AmazonFSxFullAccess"
 
 vpc:
-  id: vpc-0ade33da149682ec2
+  id: vpc-0a4d6ce6217cd12cb
   subnets:
     public:
       eu-central-1a:
-        id: "subnet-038b10f6f4ac5aacd"
+        id: "subnet-0feb9e8e7b8b09c18"
       eu-central-1b:
-        id: "subnet-099b2b55ca156bb7d"
+        id: "subnet-0569194ef47095998"
 
 addons:
   - name: vpc-cni
