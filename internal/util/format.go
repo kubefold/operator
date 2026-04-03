@@ -11,9 +11,9 @@ func FormatSize(size int64) string {
 		return fmt.Sprintf("%.2f KB", float64(size)/1000)
 	} else if size < 1000*1000*1000 {
 		return fmt.Sprintf("%.2f MB", float64(size)/(1000*1000))
-	} else {
-		return fmt.Sprintf("%.2f GB", float64(size)/(1000*1000*1000))
 	}
+
+	return fmt.Sprintf("%.2f GB", float64(size)/(1000*1000*1000))
 }
 
 func FormatSpeed(speed int64) string {
