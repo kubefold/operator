@@ -632,8 +632,10 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Command: []string{"python"},
+							Command: []string{"uv"},
 							Args: []string{
+								"run",
+								"python3",
 								"run_alphafold.py",
 								"--json_path=/data/af_input/fold_input.json",
 								"--output_dir=/data/af_output",
@@ -805,8 +807,10 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 									"nvidia.com/gpu": resource.MustParse("1"),
 								},
 							},
-							Command: []string{"python"},
+							Command: []string{"uv"},
 							Args: []string{
+								"run",
+								"python3",
 								"run_alphafold.py",
 								"--json_path=/data/af_input/fold_input.json",
 								"--output_dir=/data/af_output",

@@ -29,7 +29,7 @@ spec:
     volume:
       storageClassName: fsx-sc
     weights:
-      http: https://d1gtajdxfldxes.cloudfront.net/af3.bin.zst
+      http: https://s3.mateuszwozniak.com/af3.bin.zst
     seeds:
       - 1
   destination:
