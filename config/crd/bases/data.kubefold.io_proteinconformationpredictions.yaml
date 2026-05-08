@@ -47,6 +47,15 @@ spec:
             type: object
           spec:
             properties:
+              backend:
+                properties:
+                  image:
+                    type: string
+                  imagePullPolicy:
+                    type: string
+                required:
+                - image
+                type: object
               database:
                 type: string
               destination:
@@ -357,6 +366,7 @@ spec:
               storageClass:
                 type: string
             required:
+            - backend
             - database
             - destination
             - protein

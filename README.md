@@ -56,6 +56,8 @@ metadata:
   name: my-prediction
 spec:
   database: my-database
+  backend:
+    image: registry.example.com/alphafold2:latest
   protein:
     id: ['A']
     sequence: "YOUR_PROTEIN_SEQUENCE"

@@ -624,25 +624,15 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 					Containers: []corev1.Container{
 						{
 							Name:            "search",
-							Image:           AlphafoldImage,
-							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Image:           pred.Spec.Backend.Image,
+							ImagePullPolicy: backendImagePullPolicy(pred),
 							SecurityContext: &corev1.SecurityContext{
 								AllowPrivilegeEscalation: &[]bool{false}[0],
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Command: []string{"uv"},
-							Args: []string{
-								"run",
-								"python3",
-								"run_alphafold.py",
-								"--json_path=/data/af_input/fold_input.json",
-								"--output_dir=/data/af_output",
-								"--model_dir=/data/models",
-								"--db_dir=/public_databases",
-								"--run_inference=false",
-							},
+							Args: []string{"search"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
@@ -774,7 +764,17 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							},
 							Args: []string{
 								"-c",
-								fmt.Sprintf("mkdir -p /data/models; wget --tries=3 --timeout=30 -O /data/models/af3.bin.zst %s && unzstd /data/models/af3.bin.zst || (echo 'Failed to download or extract weights' && exit 1)", pred.Spec.Model.Weights.HTTP),
+								fmt.Sprintf(`set -e
+mkdir -p /data/models
+url=%q
+archive=/data/models/$(basename "$url")
+wget --tries=3 --timeout=30 -O "$archive" "$url"
+case "$archive" in
+  *.tar.gz|*.tgz) tar -xzf "$archive" -C /data/models && rm -f "$archive" ;;
+  *.tar)          tar -xf  "$archive" -C /data/models && rm -f "$archive" ;;
+  *.zst)          unzstd "$archive" && rm -f "$archive" ;;
+  *)              : ;;
+esac`, pred.Spec.Model.Weights.HTTP),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -791,8 +791,8 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 					Containers: []corev1.Container{
 						{
 							Name:            "predict",
-							Image:           AlphafoldImage,
-							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Image:           pred.Spec.Backend.Image,
+							ImagePullPolicy: backendImagePullPolicy(pred),
 							SecurityContext: &corev1.SecurityContext{
 								AllowPrivilegeEscalation: &[]bool{false}[0],
 								Capabilities: &corev1.Capabilities{
@@ -807,17 +807,7 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 									"nvidia.com/gpu": resource.MustParse("1"),
 								},
 							},
-							Command: []string{"uv"},
-							Args: []string{
-								"run",
-								"python3",
-								"run_alphafold.py",
-								"--json_path=/data/af_input/fold_input.json",
-								"--output_dir=/data/af_output",
-								"--model_dir=/data/models",
-								"--db_dir=/public_databases",
-								"--run_data_pipeline=false",
-							},
+							Args: []string{"predict"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
@@ -1043,6 +1033,9 @@ func (r *ProteinConformationPredictionReconciler) validateSpec(pred *datav1.Prot
 	if pred.Spec.Model.Weights.HTTP == "" {
 		return fmt.Errorf("model weights HTTP URL cannot be empty")
 	}
+	if pred.Spec.Backend.Image == "" {
+		return fmt.Errorf("backend image cannot be empty")
+	}
 	return nil
 }
 
@@ -1080,6 +1073,13 @@ func (r *ProteinConformationPredictionReconciler) checkJobTimeout(job *batchv1.J
 	}
 
 	return time.Since(job.Status.StartTime.Time) > timeout
+}
+
+func backendImagePullPolicy(pred *datav1.ProteinConformationPrediction) corev1.PullPolicy {
+	if pred.Spec.Backend.ImagePullPolicy != "" {
+		return pred.Spec.Backend.ImagePullPolicy
+	}
+	return corev1.PullAlways
 }
 
 func (r *ProteinConformationPredictionReconciler) SetupWithManager(mgr ctrl.Manager) error {
