@@ -23,7 +23,7 @@ spec:
                 - g5.xlarge
   database: proteindatabase-sample
   backend:
-    image: public.ecr.aws/k3x1v3b7/alphafold2:latest
+    image: registry.example.com/alphafold2:latest
   protein:
     id: [ 'A','B' ]
     sequence: GMRESYANENQFGFKTINSDIHKIVIVGGYGKLGGLFARYLRASGYPISILDREDWAVAESILANADVVIVSVPINLTLETIERLKPYLTENMLLADLTSVKREPLAKMLEVHTGAVLGLHPMFGADIASMAKQVVVRCDGRFPERYEWLLEQIQIWGAKIYQTNATEHDHNMTYIQALRHFSTFANGLHLSKQPINLANLLALSSPIYRLELAMIGRLFAQDAELYADIIMDKSENLAVIETLKQTYDEALTFFENNDRQGFIDAFHKVRDWFGDYSEQFLKESRQLLQQANDLKQG
@@ -31,7 +31,7 @@ spec:
     volume:
       storageClassName: fsx-sc
     weights:
-      http: https://s3.mateuszwozniak.com/af2.tar
+      http: https://example.org/af2-model-parameters.tar
     seeds:
       - 1
   destination:
@@ -41,4 +41,4 @@ spec:
   notify:
     region: eu-central-1
     sms:
-      - "+48505506682"
+      - "+48123456789"

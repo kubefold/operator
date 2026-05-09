@@ -47,6 +47,23 @@ spec:
             type: object
           spec:
             properties:
+              backend:
+                properties:
+                  dialect:
+                    default: alphafold2
+                    enum:
+                    - alphafold2
+                    - alphafold3
+                    type: string
+                  image:
+                    type: string
+                  imagePullPolicy:
+                    description: PullPolicy describes a policy for if/when to pull
+                      a container image
+                    type: string
+                required:
+                - image
+                type: object
               database:
                 type: string
               destination:
@@ -357,6 +374,7 @@ spec:
               storageClass:
                 type: string
             required:
+            - backend
             - database
             - destination
             - protein

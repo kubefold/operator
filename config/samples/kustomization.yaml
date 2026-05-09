@@ -1,5 +1,5 @@
 ## Append samples of your project ##
 resources:
 - data_v1_proteindatabase.yaml
-- data_v1_proteinconformationprediction.yaml
+- data_v1_proteinconformationprediction_redacted.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

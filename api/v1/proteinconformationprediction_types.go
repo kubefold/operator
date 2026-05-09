@@ -49,6 +49,16 @@ type ProteinConformationPredictionJob struct {
 	PredictionNodeSelector v1.NodeSelector `json:"predictionNodeSelector,omitempty"`
 }
 
+type ProteinConformationPredictionBackend struct {
+	Image string `json:"image"`
+	// +optional
+	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Enum=alphafold2;alphafold3
+	// +kubebuilder:default=alphafold2
+	Dialect string `json:"dialect,omitempty"`
+}
+
 type ProteinConformationPredictionSpec struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Protein       ProteinConformationPredictionProtein       `json:"protein"`
@@ -56,6 +66,7 @@ type ProteinConformationPredictionSpec struct {
 	Destination   ProteinConformationPredictionDestination   `json:"destination"`
 	Notifications ProteinConformationPredictionNotifications `json:"notify,omitempty"`
 	Job           ProteinConformationPredictionJob           `json:"job,omitempty"`
+	Backend       ProteinConformationPredictionBackend       `json:"backend"`
 	Database      string                                     `json:"database"`
 	StorageClass  string                                     `json:"storageClass,omitempty"`
 }

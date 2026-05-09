@@ -2,12 +2,10 @@ package controller
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/kubefold/operator/internal/alphafold"
+	"github.com/kubefold/operator/internal/backend"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -263,14 +261,14 @@ func (r *ProteinConformationPredictionReconciler) handleNotStarted(ctx context.C
 	err = r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			encodedInput, err := r.prepareFoldInput(pred, false)
+			selectedBackend, encodedInput, err := r.resolveBackendInput(pred, false)
 			if err != nil {
 				log.Error(err, "Failed to prepare FoldInput")
 				r.Recorder.Event(pred, corev1.EventTypeWarning, "InputError", fmt.Sprintf("Failed to prepare FoldInput: %v", err))
 				return ctrl.Result{}, err
 			}
 
-			job = r.newSearchJob(pred, jobName, pvcName, encodedInput)
+			job = r.newSearchJob(pred, jobName, pvcName, selectedBackend, encodedInput)
 			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for search job")
 				r.Recorder.Event(pred, corev1.EventTypeWarning, "JobReferenceError", fmt.Sprintf("Failed to set controller reference for search job: %v", err))
@@ -353,14 +351,14 @@ func (r *ProteinConformationPredictionReconciler) handlePredicting(ctx context.C
 	err := r.Get(ctx, types.NamespacedName{Name: jobName, Namespace: pred.Namespace}, job)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			encodedInput, err := r.prepareFoldInput(pred, true)
+			selectedBackend, encodedInput, err := r.resolveBackendInput(pred, true)
 			if err != nil {
 				log.Error(err, "Failed to prepare FoldInput")
 				return ctrl.Result{}, err
 			}
 
 			pvcName := fmt.Sprintf("%s-data", pred.Name)
-			job = r.newPredictionJob(pred, jobName, pvcName, encodedInput)
+			job = r.newPredictionJob(pred, jobName, pvcName, selectedBackend, encodedInput)
 			if err := controllerutil.SetControllerReference(pred, job, r.Scheme); err != nil {
 				log.Error(err, "Failed to set controller reference for prediction job")
 				return ctrl.Result{}, err
@@ -522,38 +520,27 @@ func (r *ProteinConformationPredictionReconciler) newPVC(pred *datav1.ProteinCon
 	return pvc
 }
 
-func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.ProteinConformationPrediction, prediction bool) (string, error) {
-	input := alphafold.Input{
-		Name: fmt.Sprintf("%s-%s", pred.Namespace, pred.Name),
-		Sequences: []alphafold.Sequence{
-			{
-				Protein: alphafold.Protein{
-					Sequence: pred.Spec.Protein.Sequence,
-					ID:       pred.Spec.Protein.ID,
-				},
-			},
-		},
-		ModelSeeds: pred.Spec.Model.Seeds,
-		Dialect:    "alphafold3",
-		Version:    1,
+func (r *ProteinConformationPredictionReconciler) resolveBackendInput(pred *datav1.ProteinConformationPrediction, predictionPhase bool) (backend.Backend, string, error) {
+	dialect := pred.Spec.Backend.Dialect
+	if dialect == "" {
+		detected, err := backend.DetectDialect(pred.Spec.Backend.Image)
+		if err != nil {
+			return nil, "", err
+		}
+		dialect = detected
 	}
-	if prediction {
-		empty := ""
-		emptyList := make([]string, 0)
-		input.Sequences[0].Protein.Templates = &emptyList
-		input.Sequences[0].Protein.UnpairedMSA = &empty
-		input.Sequences[0].Protein.PairedMSA = &empty
-	}
-
-	inputJson, err := json.Marshal(input)
+	selectedBackend, err := backend.Resolve(dialect)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal fold input: %w", err)
+		return nil, "", err
 	}
-
-	return base64.StdEncoding.EncodeToString(inputJson), nil
+	encodedInput, err := selectedBackend.PrepareInput(pred, predictionPhase)
+	if err != nil {
+		return nil, "", err
+	}
+	return selectedBackend, encodedInput, nil
 }
 
-func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job {
+func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName string, selectedBackend backend.Backend, encodedInput string) *batchv1.Job {
 	backoffLimit := int32(2)
 
 	job := &batchv1.Job{
@@ -605,6 +592,10 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 									Value: "/data/af_output",
 								},
 								{
+									Name:  "INPUT_FILENAME",
+									Value: selectedBackend.InputFilename(),
+								},
+								{
 									Name:  "ENCODED_INPUT",
 									Value: encodedInput,
 								},
@@ -624,25 +615,15 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 					Containers: []corev1.Container{
 						{
 							Name:            "search",
-							Image:           AlphafoldImage,
-							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Image:           pred.Spec.Backend.Image,
+							ImagePullPolicy: r.backendImagePullPolicy(pred),
 							SecurityContext: &corev1.SecurityContext{
 								AllowPrivilegeEscalation: &[]bool{false}[0],
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Command: []string{"uv"},
-							Args: []string{
-								"run",
-								"python3",
-								"run_alphafold.py",
-								"--json_path=/data/af_input/fold_input.json",
-								"--output_dir=/data/af_output",
-								"--model_dir=/data/models",
-								"--db_dir=/public_databases",
-								"--run_inference=false",
-							},
+							Args: []string{"search"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
@@ -692,7 +673,7 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 	return job
 }
 
-func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job {
+func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName string, selectedBackend backend.Backend, encodedInput string) *batchv1.Job {
 	backoffLimit := int32(2)
 
 	job := &batchv1.Job{
@@ -744,6 +725,10 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 									Value: "/data/af_output",
 								},
 								{
+									Name:  "INPUT_FILENAME",
+									Value: selectedBackend.InputFilename(),
+								},
+								{
 									Name:  "ENCODED_INPUT",
 									Value: encodedInput,
 								},
@@ -774,7 +759,17 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 							},
 							Args: []string{
 								"-c",
-								fmt.Sprintf("mkdir -p /data/models; wget --tries=3 --timeout=30 -O /data/models/af3.bin.zst %s && unzstd /data/models/af3.bin.zst || (echo 'Failed to download or extract weights' && exit 1)", pred.Spec.Model.Weights.HTTP),
+								fmt.Sprintf(`set -e
+mkdir -p /data/models
+url=%q
+archive=/data/models/$(basename "$url")
+wget --tries=3 --timeout=30 -O "$archive" "$url"
+case "$archive" in
+  *.tar.gz|*.tgz) tar -xzf "$archive" -C /data/models && rm -f "$archive" ;;
+  *.tar)          tar -xf  "$archive" -C /data/models && rm -f "$archive" ;;
+  *.zst)          unzstd "$archive" && rm -f "$archive" ;;
+  *)              : ;;
+esac`, pred.Spec.Model.Weights.HTTP),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -791,8 +786,8 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 					Containers: []corev1.Container{
 						{
 							Name:            "predict",
-							Image:           AlphafoldImage,
-							ImagePullPolicy: AlphafoldImagePullPolicy,
+							Image:           pred.Spec.Backend.Image,
+							ImagePullPolicy: r.backendImagePullPolicy(pred),
 							SecurityContext: &corev1.SecurityContext{
 								AllowPrivilegeEscalation: &[]bool{false}[0],
 								Capabilities: &corev1.Capabilities{
@@ -807,17 +802,7 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 									"nvidia.com/gpu": resource.MustParse("1"),
 								},
 							},
-							Command: []string{"uv"},
-							Args: []string{
-								"run",
-								"python3",
-								"run_alphafold.py",
-								"--json_path=/data/af_input/fold_input.json",
-								"--output_dir=/data/af_output",
-								"--model_dir=/data/models",
-								"--db_dir=/public_databases",
-								"--run_data_pipeline=false",
-							},
+							Args: []string{"predict"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "data",
@@ -1043,6 +1028,9 @@ func (r *ProteinConformationPredictionReconciler) validateSpec(pred *datav1.Prot
 	if pred.Spec.Model.Weights.HTTP == "" {
 		return fmt.Errorf("model weights HTTP URL cannot be empty")
 	}
+	if pred.Spec.Backend.Image == "" {
+		return fmt.Errorf("backend image cannot be empty")
+	}
 	return nil
 }
 
@@ -1080,6 +1068,13 @@ func (r *ProteinConformationPredictionReconciler) checkJobTimeout(job *batchv1.J
 	}
 
 	return time.Since(job.Status.StartTime.Time) > timeout
+}
+
+func (r *ProteinConformationPredictionReconciler) backendImagePullPolicy(pred *datav1.ProteinConformationPrediction) corev1.PullPolicy {
+	if pred.Spec.Backend.ImagePullPolicy != "" {
+		return pred.Spec.Backend.ImagePullPolicy
+	}
+	return corev1.PullAlways
 }
 
 func (r *ProteinConformationPredictionReconciler) SetupWithManager(mgr ctrl.Manager) error {
