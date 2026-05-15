@@ -553,6 +553,47 @@ func (r *ProteinConformationPredictionReconciler) prepareFoldInput(pred *datav1.
 	return base64.StdEncoding.EncodeToString(inputJson), nil
 }
 
+type phaseResources struct {
+	cpu    string
+	memory string
+}
+
+var profileResourceMap = map[datav1.ProteinConformationPredictionProfile]map[string]phaseResources{
+	datav1.ProteinConformationPredictionProfileSmall: {
+		"search":  {cpu: "1500m", memory: "6Gi"},
+		"predict": {cpu: "1", memory: "4Gi"},
+		"upload":  {cpu: "100m", memory: "256Mi"},
+	},
+	datav1.ProteinConformationPredictionProfileMedium: {
+		"search":  {cpu: "3", memory: "12Gi"},
+		"predict": {cpu: "1", memory: "8Gi"},
+		"upload":  {cpu: "100m", memory: "256Mi"},
+	},
+	datav1.ProteinConformationPredictionProfileLarge: {
+		"search":  {cpu: "6", memory: "48Gi"},
+		"predict": {cpu: "2", memory: "16Gi"},
+		"upload":  {cpu: "100m", memory: "256Mi"},
+	},
+}
+
+func resourcesForPhase(profile datav1.ProteinConformationPredictionProfile, phase string) corev1.ResourceRequirements {
+	p := profile
+	if p == "" {
+		p = datav1.ProteinConformationPredictionProfileMedium
+	}
+	phases, ok := profileResourceMap[p]
+	if !ok {
+		phases = profileResourceMap[datav1.ProteinConformationPredictionProfileMedium]
+	}
+	pr := phases[phase]
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse(pr.cpu),
+			corev1.ResourceMemory: resource.MustParse(pr.memory),
+		},
+	}
+}
+
 func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job {
 	backoffLimit := int32(2)
 
@@ -632,7 +673,8 @@ func (r *ProteinConformationPredictionReconciler) newSearchJob(pred *datav1.Prot
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Command: []string{"uv"},
+							Resources: resourcesForPhase(pred.Spec.Job.Profile, "search"),
+							Command:   []string{"uv"},
 							Args: []string{
 								"run",
 								"python3",
@@ -799,14 +841,15 @@ func (r *ProteinConformationPredictionReconciler) newPredictionJob(pred *datav1.
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									"nvidia.com/gpu": resource.MustParse("1"),
-								},
-								Limits: corev1.ResourceList{
-									"nvidia.com/gpu": resource.MustParse("1"),
-								},
-							},
+							Resources: func() corev1.ResourceRequirements {
+								r := resourcesForPhase(pred.Spec.Job.Profile, "predict")
+								r.Requests["nvidia.com/gpu"] = resource.MustParse("1")
+								if r.Limits == nil {
+									r.Limits = corev1.ResourceList{}
+								}
+								r.Limits["nvidia.com/gpu"] = resource.MustParse("1")
+								return r
+							}(),
 							Command: []string{"uv"},
 							Args: []string{
 								"run",
@@ -917,6 +960,7 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
+							Resources: resourcesForPhase(pred.Spec.Job.Profile, "upload"),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",
@@ -952,6 +996,7 @@ func (r *ProteinConformationPredictionReconciler) newUploadArtifactsJob(pred *da
 									Drop: []corev1.Capability{"ALL"},
 								},
 							},
+							Resources: resourcesForPhase(pred.Spec.Job.Profile, "upload"),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "INPUT_PATH",

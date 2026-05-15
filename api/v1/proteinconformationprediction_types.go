@@ -44,9 +44,18 @@ type ProteinConformationPredictionNotifications struct {
 	Region string   `json:"region"`
 }
 
+type ProteinConformationPredictionProfile string
+
+const (
+	ProteinConformationPredictionProfileSmall  ProteinConformationPredictionProfile = "small"
+	ProteinConformationPredictionProfileMedium ProteinConformationPredictionProfile = "medium"
+	ProteinConformationPredictionProfileLarge  ProteinConformationPredictionProfile = "large"
+)
+
 type ProteinConformationPredictionJob struct {
-	SearchNodeSelector     v1.NodeSelector `json:"searchNodeSelector,omitempty"`
-	PredictionNodeSelector v1.NodeSelector `json:"predictionNodeSelector,omitempty"`
+	SearchNodeSelector     v1.NodeSelector                      `json:"searchNodeSelector,omitempty"`
+	PredictionNodeSelector v1.NodeSelector                      `json:"predictionNodeSelector,omitempty"`
+	Profile                ProteinConformationPredictionProfile `json:"profile,omitempty"`
 }
 
 type ProteinConformationPredictionSpec struct {
