@@ -157,6 +157,8 @@ spec:
                     - nodeSelectorTerms
                     type: object
                     x-kubernetes-map-type: atomic
+                  profile:
+                    type: string
                   searchNodeSelector:
                     description: |-
                       A node selector represents the union of the results of one or more label queries
