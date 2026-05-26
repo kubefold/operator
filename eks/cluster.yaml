@@ -7,7 +7,9 @@ metadata:
 managedNodeGroups:
   - name: ng-primary
     instanceType: m5.xlarge
-    desiredCapacity: 1
+    desiredCapacity: 3
+    minSize: 1
+    maxSize: 6
     ssh:
       allow: true
     subnets:
@@ -27,7 +29,9 @@ managedNodeGroups:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
   - name: ng-gpu
     instanceType: g5.xlarge
-    desiredCapacity: 1
+    desiredCapacity: 3
+    minSize: 1
+    maxSize: 6
     ssh:
       allow: true
     subnets:

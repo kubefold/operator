@@ -1,5 +1,6 @@
 #!/bin/bash
 
+export AWS_PROFILE=solidchat
 export AWS_PAGER=""
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REGION="eu-central-1"

@@ -30,5 +30,8 @@ func FormatSpeed(speed int64) string {
 }
 
 func FormatPercentage(a, b int64) string {
+	if b <= 0 {
+		return "0.0%"
+	}
 	return fmt.Sprintf("%.1f%%", float64(a)/float64(b)*100)
 }

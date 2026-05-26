@@ -6,13 +6,20 @@ import (
 )
 
 type ProteinConformationPredictionProtein struct {
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=10000
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	Sequence string `json:"sequence"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	ID []string `json:"id"`
 }
 
 type ProteinConformationPredictionModelWeights struct {
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MaxLength=2048
 	HTTP string `json:"http"`
 }
 
@@ -31,7 +38,12 @@ type ProteinConformationPredictionModel struct {
 }
 
 type ProteinConformationPredictionDestinationS3 struct {
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=3
+	// +kubebuilder:validation:MaxLength=63
 	Bucket string `json:"bucket"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
 	Region string `json:"region"`
 }
 
@@ -59,14 +71,19 @@ type ProteinConformationPredictionJob struct {
 }
 
 type ProteinConformationPredictionSpec struct {
+	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
-	Protein       ProteinConformationPredictionProtein       `json:"protein"`
-	Model         ProteinConformationPredictionModel         `json:"model,omitempty"`
+	Protein ProteinConformationPredictionProtein `json:"protein"`
+	// +kubebuilder:validation:Required
+	Model ProteinConformationPredictionModel `json:"model"`
+	// +kubebuilder:validation:Required
 	Destination   ProteinConformationPredictionDestination   `json:"destination"`
 	Notifications ProteinConformationPredictionNotifications `json:"notify,omitempty"`
 	Job           ProteinConformationPredictionJob           `json:"job,omitempty"`
-	Database      string                                     `json:"database"`
-	StorageClass  string                                     `json:"storageClass,omitempty"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Database     string `json:"database"`
+	StorageClass string `json:"storageClass,omitempty"`
 }
 
 type ProteinConformationPredictionStatusPhase string
@@ -84,13 +101,24 @@ type ProteinConformationPredictionStatus struct {
 	Phase          ProteinConformationPredictionStatusPhase `json:"phase,omitempty"`
 	SequencePrefix string                                   `json:"sequencePrefix,omitempty"`
 	Error          string                                   `json:"error,omitempty"`
-	RetryCount     int32                                    `json:"retryCount,omitempty"`
+	// Deprecated: use SearchRetryCount, PredictRetryCount or UploadRetryCount.
+	RetryCount         int32        `json:"retryCount,omitempty"`
+	SearchRetryCount   int32        `json:"searchRetryCount,omitempty"`
+	PredictRetryCount  int32        `json:"predictRetryCount,omitempty"`
+	UploadRetryCount   int32        `json:"uploadRetryCount,omitempty"`
+	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
+	// +listType=map
+	// +listMapKey=type
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Sequence",type=string,JSONPath=`.status.sequencePrefix`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=='Ready')].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 type ProteinConformationPrediction struct {

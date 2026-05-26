@@ -39,8 +39,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	datav1 "github.com/kubefold/operator/api/v1"
-	"github.com/kubefold/operator/internal/controller"
+	"github.com/kubefold/operator/internal/database"
 	"github.com/kubefold/operator/internal/observer"
+	"github.com/kubefold/operator/internal/prediction"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -221,17 +222,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.ProteinDatabaseReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	databaseReconciler := database.NewReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		mgr.GetEventRecorderFor("proteindatabase-controller"),
+	)
+	if err = databaseReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ProteinDatabase")
 		os.Exit(1)
 	}
-	if err = (&controller.ProteinConformationPredictionReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	predictionReconciler := prediction.NewReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		mgr.GetEventRecorderFor("proteinconformationprediction-controller"),
+	)
+	if err = predictionReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ProteinConformationPrediction")
 		os.Exit(1)
 	}
