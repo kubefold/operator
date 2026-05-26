@@ -32,7 +32,9 @@ func (p *statusPublisher) Publish(ctx context.Context, database *datav1.ProteinD
 			return fmt.Errorf("failed to get latest ProteinDatabase: %w", err)
 		}
 		p.aggregator.Aggregate(newStatus)
+		volumeName := latest.Status.VolumeName
 		latest.Status = *newStatus
+		latest.Status.VolumeName = volumeName
 		latest.Status.LastUpdate = util.GetNow()
 		return p.client.Status().Update(ctx, latest)
 	})

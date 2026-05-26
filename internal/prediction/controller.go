@@ -3,6 +3,7 @@ package prediction
 import (
 	"context"
 	"os"
+	"slices"
 	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -177,13 +178,9 @@ func parseAllowedHosts(raw string) []string {
 	if raw == "" || raw == "*" {
 		return nil
 	}
-	parts := strings.Split(raw, ",")
-	hosts := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			hosts = append(hosts, trimmed)
-		}
+	hosts := strings.FieldsFunc(raw, func(r rune) bool { return r == ',' })
+	for i, host := range hosts {
+		hosts[i] = strings.TrimSpace(host)
 	}
-	return hosts
+	return slices.DeleteFunc(hosts, func(host string) bool { return host == "" })
 }

@@ -22,24 +22,21 @@ type datasetEntry struct {
 	enabled func(*datav1.ProteinDatabase) bool
 }
 
-func datasetEntries() []datasetEntry {
-	return []datasetEntry{
-		{downloaderTypes.DatasetMGYClusters, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.MGYClusters }},
-		{downloaderTypes.DatasetBFD, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.BFD }},
-		{downloaderTypes.DatasetUniRef90, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.UniRef90 }},
-		{downloaderTypes.DatasetUniProt, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.UniProt }},
-		{downloaderTypes.DatasetPDB, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.PDB }},
-		{downloaderTypes.DatasetPDBSeqReq, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.PDBSeqReq }},
-		{downloaderTypes.DatasetRNACentral, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.RNACentral }},
-		{downloaderTypes.DatasetNT, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.NT }},
-		{downloaderTypes.DatasetRFam, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.RFam }},
-	}
+var datasetEntries = []datasetEntry{
+	{downloaderTypes.DatasetMGYClusters, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.MGYClusters }},
+	{downloaderTypes.DatasetBFD, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.BFD }},
+	{downloaderTypes.DatasetUniRef90, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.UniRef90 }},
+	{downloaderTypes.DatasetUniProt, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.UniProt }},
+	{downloaderTypes.DatasetPDB, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.PDB }},
+	{downloaderTypes.DatasetPDBSeqReq, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.PDBSeqReq }},
+	{downloaderTypes.DatasetRNACentral, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.RNACentral }},
+	{downloaderTypes.DatasetNT, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.NT }},
+	{downloaderTypes.DatasetRFam, func(p *datav1.ProteinDatabase) bool { return p.Spec.Datasets.RFam }},
 }
 
 func (e *datasetEnumerator) FromSpec(database *datav1.ProteinDatabase) []downloaderTypes.Dataset {
-	entries := datasetEntries()
-	out := make([]downloaderTypes.Dataset, 0, len(entries))
-	for _, entry := range entries {
+	out := make([]downloaderTypes.Dataset, 0, len(datasetEntries))
+	for _, entry := range datasetEntries {
 		if entry.enabled(database) {
 			out = append(out, entry.dataset)
 		}
@@ -48,9 +45,8 @@ func (e *datasetEnumerator) FromSpec(database *datav1.ProteinDatabase) []downloa
 }
 
 func (e *datasetEnumerator) All() []downloaderTypes.Dataset {
-	entries := datasetEntries()
-	out := make([]downloaderTypes.Dataset, 0, len(entries))
-	for _, entry := range entries {
+	out := make([]downloaderTypes.Dataset, 0, len(datasetEntries))
+	for _, entry := range datasetEntries {
 		out = append(out, entry.dataset)
 	}
 	return out

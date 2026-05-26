@@ -123,11 +123,7 @@ func (r *phaseRouter) handleNotStarted(ctx context.Context, prediction *datav1.P
 			return ctrl.Result{}, encodeErr
 		}
 		newJob := r.jobs.BuildSearch(prediction, jobName, pvcName, encodedInput)
-		if err := controllerutil.SetControllerReference(prediction, newJob, r.scheme); err != nil {
-			log.Error(err, "Failed to set controller reference for search job")
-			return ctrl.Result{}, err
-		}
-		if err := r.client.Create(ctx, newJob); err != nil && !errors.IsAlreadyExists(err) {
+		if err := r.createOwnedJob(ctx, prediction, newJob); err != nil {
 			log.Error(err, "Failed to create search job")
 			r.recorder.Event(prediction, corev1.EventTypeWarning, "JobCreationError", fmt.Sprintf("Failed to create search job: %v", err))
 			return ctrl.Result{}, err
@@ -215,15 +211,21 @@ func (r *phaseRouter) createPredictionJob(ctx context.Context, prediction *datav
 	}
 	pvcName := shared.PredictionDataPVCName(prediction.Name)
 	job := r.jobs.BuildPredict(prediction, jobName, pvcName, encodedInput)
-	if err := controllerutil.SetControllerReference(prediction, job, r.scheme); err != nil {
-		log.Error(err, "Failed to set controller reference for prediction job")
-		return ctrl.Result{}, err
-	}
-	if err := r.client.Create(ctx, job); err != nil && !errors.IsAlreadyExists(err) {
+	if err := r.createOwnedJob(ctx, prediction, job); err != nil {
 		log.Error(err, "Failed to create prediction job")
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{Requeue: true}, nil
+}
+
+func (r *phaseRouter) createOwnedJob(ctx context.Context, prediction *datav1.ProteinConformationPrediction, job *batchv1.Job) error {
+	if err := controllerutil.SetControllerReference(prediction, job, r.scheme); err != nil {
+		return err
+	}
+	if err := r.client.Create(ctx, job); err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }
 
 func (r *phaseRouter) handleUploadingArtifacts(ctx context.Context, prediction *datav1.ProteinConformationPrediction) (ctrl.Result, error) {
@@ -253,11 +255,7 @@ func (r *phaseRouter) createUploadJob(ctx context.Context, prediction *datav1.Pr
 	log := logf.FromContext(ctx)
 	pvcName := shared.PredictionDataPVCName(prediction.Name)
 	job := r.jobs.BuildUpload(prediction, jobName, pvcName)
-	if err := controllerutil.SetControllerReference(prediction, job, r.scheme); err != nil {
-		log.Error(err, "Failed to set controller reference for upload job")
-		return ctrl.Result{}, err
-	}
-	if err := r.client.Create(ctx, job); err != nil && !errors.IsAlreadyExists(err) {
+	if err := r.createOwnedJob(ctx, prediction, job); err != nil {
 		log.Error(err, "Failed to create upload job")
 		return ctrl.Result{}, err
 	}

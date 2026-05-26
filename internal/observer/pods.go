@@ -47,17 +47,16 @@ func (r *podLogReader) StreamLines(ctx context.Context, pod corev1.Pod, tailLine
 	entries := make([]LogEntry, 0)
 	for {
 		line, err := reader.ReadString('\n')
+		if line != "" {
+			if entry, ok := ParseLogEntry([]byte(line)); ok {
+				entries = append(entries, entry)
+			}
+		}
 		if err != nil {
 			if err == io.EOF {
-				break
+				return entries, nil
 			}
 			return nil, fmt.Errorf("error reading pod logs: %w", err)
 		}
-		entry, ok := ParseLogEntry([]byte(line))
-		if !ok {
-			continue
-		}
-		entries = append(entries, entry)
 	}
-	return entries, nil
 }

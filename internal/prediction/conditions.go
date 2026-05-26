@@ -26,7 +26,6 @@ const (
 
 type ConditionsManager interface {
 	Set(status *datav1.ProteinConformationPredictionStatus, condition metav1.Condition)
-	IsTrue(status *datav1.ProteinConformationPredictionStatus, conditionType string) bool
 }
 
 type conditionsManager struct{}
@@ -41,8 +40,4 @@ func (m *conditionsManager) Set(status *datav1.ProteinConformationPredictionStat
 		stamp := updated.LastTransitionTime
 		status.LastTransitionTime = &stamp
 	}
-}
-
-func (m *conditionsManager) IsTrue(status *datav1.ProteinConformationPredictionStatus, conditionType string) bool {
-	return shared.IsConditionTrue(status.Conditions, conditionType)
 }

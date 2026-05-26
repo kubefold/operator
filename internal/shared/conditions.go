@@ -12,10 +12,6 @@ func SetCondition(conditions *[]metav1.Condition, condition metav1.Condition) {
 	apimeta.SetStatusCondition(conditions, condition)
 }
 
-func IsConditionTrue(conditions []metav1.Condition, conditionType string) bool {
-	return apimeta.IsStatusConditionTrue(conditions, conditionType)
-}
-
 func FindCondition(conditions []metav1.Condition, conditionType string) *metav1.Condition {
 	return apimeta.FindStatusCondition(conditions, conditionType)
 }

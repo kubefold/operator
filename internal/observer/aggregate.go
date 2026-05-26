@@ -1,8 +1,6 @@
 package observer
 
 import (
-	"time"
-
 	datav1 "github.com/kubefold/operator/api/v1"
 	"github.com/kubefold/operator/internal/database"
 	"github.com/kubefold/operator/internal/util"
@@ -21,7 +19,7 @@ func NewMetricsAggregator(enumerator database.DatasetEnumerator) MetricsAggregat
 }
 
 func (a *metricsAggregator) Aggregate(status *datav1.ProteinDatabaseStatus) {
-	var size, totalSize, delta int64
+	var size, totalSize, speedBytesPerSecond int64
 	for _, dataset := range a.enumerator.All() {
 		slot, ok := datasetSlots[dataset]
 		if !ok {
@@ -30,13 +28,13 @@ func (a *metricsAggregator) Aggregate(status *datav1.ProteinDatabaseStatus) {
 		progress := slot(status)
 		size += progress.Size
 		totalSize += progress.TotalSize
-		if progress.DeltaDuration != nil && progress.DeltaDuration.Duration > 0 {
-			delta += progress.Delta
+		if progress.DeltaDuration != nil {
+			speedBytesPerSecond += util.CalculateDownloadSpeed(progress.Delta, progress.DeltaDuration.Duration)
 		}
 	}
 	status.Size = util.FormatSize(size)
 	status.TotalSize = util.FormatSize(totalSize)
 	status.Progress = util.FormatPercentage(size, totalSize)
-	status.DownloadSpeed = util.FormatSpeed(util.CalculateDownloadSpeed(delta, time.Second))
+	status.DownloadSpeed = util.FormatSpeed(speedBytesPerSecond)
 	status.DownloadStatus = classifyStatus(size, totalSize)
 }
