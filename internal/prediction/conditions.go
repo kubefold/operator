@@ -37,8 +37,10 @@ func NewConditionsManager() ConditionsManager {
 
 func (m *conditionsManager) Set(status *datav1.ProteinConformationPredictionStatus, condition metav1.Condition) {
 	shared.SetCondition(&status.Conditions, condition)
-	now := metav1.Now()
-	status.LastTransitionTime = &now
+	if updated := shared.FindCondition(status.Conditions, condition.Type); updated != nil {
+		stamp := updated.LastTransitionTime
+		status.LastTransitionTime = &stamp
+	}
 }
 
 func (m *conditionsManager) IsTrue(status *datav1.ProteinConformationPredictionStatus, conditionType string) bool {

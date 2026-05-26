@@ -6,7 +6,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -74,12 +73,8 @@ func (f *finalizerReconciler) deleteJobs(ctx context.Context, database *datav1.P
 	); err != nil {
 		return err
 	}
-	propagation := metav1.DeletePropagationBackground
 	for i := range jobs.Items {
-		if err := f.client.Delete(ctx, &jobs.Items[i], &client.DeleteOptions{PropagationPolicy: &propagation}); err != nil {
-			if errors.IsNotFound(err) {
-				continue
-			}
+		if err := shared.DeleteInBackground(ctx, f.client, &jobs.Items[i]); err != nil {
 			return err
 		}
 	}
@@ -87,19 +82,15 @@ func (f *finalizerReconciler) deleteJobs(ctx context.Context, database *datav1.P
 }
 
 func (f *finalizerReconciler) deletePVC(ctx context.Context, database *datav1.ProteinDatabase) error {
-	pvcName := shared.DatabasePVCName(database.Name)
+	if database.Spec.Volume.Selector != nil {
+		return nil
+	}
 	pvc := &corev1.PersistentVolumeClaim{}
-	if err := f.client.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: database.Namespace}, pvc); err != nil {
+	if err := f.client.Get(ctx, types.NamespacedName{Name: shared.DatabasePVCName(database.Name), Namespace: database.Namespace}, pvc); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	if database.Spec.Volume.Selector != nil {
-		return nil
-	}
-	if err := f.client.Delete(ctx, pvc); err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-	return nil
+	return shared.DeleteInBackground(ctx, f.client, pvc)
 }

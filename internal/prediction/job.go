@@ -23,7 +23,16 @@ const (
 	weightsURLEnvVar = "WEIGHTS_URL"
 	weightsDownload  = `set -eu; mkdir -p /data/models; wget --tries=3 --timeout=30 -O /data/models/af3.bin.zst "$WEIGHTS_URL"; unzstd /data/models/af3.bin.zst`
 	jobBackoffLimit  = int32(2)
+
+	containerInputPlacement   = "input-placement"
+	containerWeightsPlacement = "weights-placement"
+	containerSearch           = "search"
+	containerPredict          = "predict"
+	containerUpload           = "upload"
+	containerNotify           = "notify"
 )
+
+var disallowPrivilegeEscalation = false
 
 type JobBuilder interface {
 	BuildSearch(prediction *datav1.ProteinConformationPrediction, jobName, pvcName, encodedInput string) *batchv1.Job
@@ -127,7 +136,7 @@ func (b *jobBuilder) BuildUpload(prediction *datav1.ProteinConformationPredictio
 
 func inputPlacementContainer(encodedInput string) corev1.Container {
 	return corev1.Container{
-		Name:            "input-placement",
+		Name:            containerInputPlacement,
 		Image:           ManagerImage,
 		ImagePullPolicy: corev1.PullAlways,
 		SecurityContext: restrictedSecurityContext(),
@@ -142,7 +151,7 @@ func inputPlacementContainer(encodedInput string) corev1.Container {
 
 func weightsPlacementContainer(weightsURL string) corev1.Container {
 	return corev1.Container{
-		Name:            "weights-placement",
+		Name:            containerWeightsPlacement,
 		Image:           ManagerImage,
 		ImagePullPolicy: corev1.PullAlways,
 		SecurityContext: restrictedSecurityContext(),
@@ -156,7 +165,7 @@ func weightsPlacementContainer(weightsURL string) corev1.Container {
 
 func searchContainer(profile datav1.ProteinConformationPredictionProfile) corev1.Container {
 	return corev1.Container{
-		Name:            "search",
+		Name:            containerSearch,
 		Image:           AlphafoldImage,
 		ImagePullPolicy: corev1.PullAlways,
 		SecurityContext: restrictedSecurityContext(),
@@ -182,7 +191,7 @@ func predictContainer(profile datav1.ProteinConformationPredictionProfile) corev
 	}
 	requirements.Limits["nvidia.com/gpu"] = resource.MustParse("1")
 	return corev1.Container{
-		Name:            "predict",
+		Name:            containerPredict,
 		Image:           AlphafoldImage,
 		ImagePullPolicy: corev1.PullAlways,
 		SecurityContext: restrictedSecurityContext(),
@@ -202,7 +211,7 @@ func predictContainer(profile datav1.ProteinConformationPredictionProfile) corev
 
 func uploadContainer(prediction *datav1.ProteinConformationPrediction) corev1.Container {
 	return corev1.Container{
-		Name:            "upload",
+		Name:            containerUpload,
 		Image:           ManagerImage,
 		ImagePullPolicy: corev1.PullAlways,
 		SecurityContext: restrictedSecurityContext(),
@@ -221,7 +230,7 @@ func uploadContainer(prediction *datav1.ProteinConformationPrediction) corev1.Co
 
 func notifyContainer(prediction *datav1.ProteinConformationPrediction) corev1.Container {
 	return corev1.Container{
-		Name:            "notify",
+		Name:            containerNotify,
 		Image:           ManagerImage,
 		ImagePullPolicy: corev1.PullAlways,
 		SecurityContext: restrictedSecurityContext(),
@@ -232,6 +241,9 @@ func notifyContainer(prediction *datav1.ProteinConformationPrediction) corev1.Co
 			{Name: "NOTIFICATION_PHONES", Value: strings.Join(prediction.Spec.Notifications.SMS, ",")},
 			{Name: "NOTIFICATION_MESSAGE", Value: fmt.Sprintf("Protein Conformation Prediction %s in namespace %s completed. Artifacts has been uploaded to %s", prediction.Name, prediction.Namespace, prediction.Spec.Destination.S3.Bucket)},
 			{Name: "AWS_REGION", Value: prediction.Spec.Destination.S3.Region},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: containerData, MountPath: mountPathData},
 		},
 	}
 }
@@ -269,9 +281,8 @@ func predictionVolumeMounts() []corev1.VolumeMount {
 }
 
 func restrictedSecurityContext() *corev1.SecurityContext {
-	allowPrivilegeEscalation := false
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+		AllowPrivilegeEscalation: &disallowPrivilegeEscalation,
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{"ALL"},
 		},

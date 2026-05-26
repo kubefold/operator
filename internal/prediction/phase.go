@@ -237,11 +237,11 @@ func (r *phaseRouter) handleUploadingArtifacts(ctx context.Context, prediction *
 		return ctrl.Result{}, err
 	}
 
-	if r.timeout.IsTimedOut(job, DefaultJobTimeout) {
-		return r.markFailedDueToTimeout(ctx, prediction, jobName)
-	}
 	if job.Status.Succeeded > 0 {
 		return r.completeUpload(ctx, prediction)
+	}
+	if r.timeout.IsTimedOut(job, DefaultJobTimeout) {
+		return r.markFailedDueToTimeout(ctx, prediction, jobName)
 	}
 	if job.Status.Failed > 0 {
 		return r.retryOrFail(ctx, prediction, job, PhaseUpload, jobName, "Upload job failed")
@@ -316,11 +316,11 @@ func (r *phaseRouter) observeJob(ctx context.Context, prediction *datav1.Protein
 }
 
 func (r *phaseRouter) observeExistingJob(ctx context.Context, prediction *datav1.ProteinConformationPrediction, job *batchv1.Job, observation jobObservation) (ctrl.Result, error) {
-	if r.timeout.IsTimedOut(job, DefaultJobTimeout) {
-		return r.markFailedDueToTimeout(ctx, prediction, observation.jobName)
-	}
 	if job.Status.Succeeded > 0 {
 		return r.advancePhase(ctx, prediction, observation)
+	}
+	if r.timeout.IsTimedOut(job, DefaultJobTimeout) {
+		return r.markFailedDueToTimeout(ctx, prediction, observation.jobName)
 	}
 	if job.Status.Failed > 0 {
 		return r.retryOrFail(ctx, prediction, job, observation.phase, observation.jobName, fmt.Sprintf("%s job failed", observation.phase))
@@ -351,7 +351,7 @@ func (r *phaseRouter) advancePhase(ctx context.Context, prediction *datav1.Prote
 
 func (r *phaseRouter) retryOrFail(ctx context.Context, prediction *datav1.ProteinConformationPrediction, job *batchv1.Job, phase Phase, jobName, message string) (ctrl.Result, error) {
 	if r.retry.AtLimit(&prediction.Status, phase) {
-		return r.markFailed(ctx, prediction, phase, jobName, message+" after max retries", ReasonRetriesExhausted)
+		return r.markFailed(ctx, prediction, fmt.Sprintf("%s (job %s) after max retries", message, jobName), ReasonRetriesExhausted)
 	}
 	if err := r.status.Update(ctx, prediction, func(p *datav1.ProteinConformationPrediction) {
 		r.retry.Increment(&p.Status, phase)
@@ -371,10 +371,10 @@ func (r *phaseRouter) markFailedDueToTimeout(ctx context.Context, prediction *da
 	if err := r.cleaner.DeletePVCForPrediction(ctx, prediction.Name, prediction.Namespace); err != nil {
 		return ctrl.Result{}, err
 	}
-	return r.markFailed(ctx, prediction, "", jobName, fmt.Sprintf("Job %s timed out", jobName), ReasonJobTimeout)
+	return r.markFailed(ctx, prediction, fmt.Sprintf("Job %s timed out", jobName), ReasonJobTimeout)
 }
 
-func (r *phaseRouter) markFailed(ctx context.Context, prediction *datav1.ProteinConformationPrediction, phase Phase, jobName, message, reason string) (ctrl.Result, error) {
+func (r *phaseRouter) markFailed(ctx context.Context, prediction *datav1.ProteinConformationPrediction, message, reason string) (ctrl.Result, error) {
 	if err := r.status.Update(ctx, prediction, func(p *datav1.ProteinConformationPrediction) {
 		p.Status.Phase = datav1.ProteinConformationPredictionStatusPhaseFailed
 		p.Status.Error = message
@@ -388,7 +388,5 @@ func (r *phaseRouter) markFailed(ctx context.Context, prediction *datav1.Protein
 		return ctrl.Result{}, err
 	}
 	r.recorder.Event(prediction, corev1.EventTypeWarning, reason, message)
-	_ = phase
-	_ = jobName
 	return ctrl.Result{}, nil
 }
